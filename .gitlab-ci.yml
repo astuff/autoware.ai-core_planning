@@ -81,7 +81,7 @@ variables:
 
 build_kinetic:
   stage: build
-  image: autoware/autoware:bleedingedge-kinetic-base
+  image: autonomoustuff/autoware:bleedingedge-kinetic-base
   variables:
     INSTALL_LCOV: git clone https://github.com/linux-test-project/lcov.git
     INSTALL_LCOV2: cd lcov
@@ -93,14 +93,14 @@ build_kinetic:
 
 build_melodic:
   stage: build
-  image: autoware/autoware:bleedingedge-melodic-base
+  image: autonomoustuff/autoware:bleedingedge-melodic-base
   variables:
     INSTALL_LCOV: sudo apt install -y lcov
   <<: *build_common
 
 build_kinetic_cross:
   stage: build
-  image: autoware/build:${AUTOWARE_CROSS_TARGET_PLATFORM}-kinetic-bleedingedge
+  image: autonomoustuff/autoware:${AUTOWARE_CROSS_TARGET_PLATFORM}-kinetic-bleedingedge
   variables:
     ROS_DISTRO: kinetic
     <<: *build_cross_vars
@@ -108,7 +108,7 @@ build_kinetic_cross:
 
 build_melodic_cross:
   stage: build
-  image: autoware/build:${AUTOWARE_CROSS_TARGET_PLATFORM}-melodic-bleedingedge
+  image: autonomoustuff/autoware:${AUTOWARE_CROSS_TARGET_PLATFORM}-melodic-bleedingedge
   variables:
     ROS_DISTRO: melodic
     <<: *build_cross_vars
