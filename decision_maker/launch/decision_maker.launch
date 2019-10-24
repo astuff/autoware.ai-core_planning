@@ -34,7 +34,7 @@
     <param name="goal_threshold_dist" value="$(arg goal_threshold_dist)" />
     <param name="goal_threshold_vel" value="$(arg goal_threshold_vel)" />
     <param name="stopped_vel" value="$(arg stopped_vel)" />
-    <param name="stopline_reset_count" value="$(arg stopline_reset_count)"/ >
+    <param name="stopline_reset_count" value="$(arg stopline_reset_count)" />
     <param name="sim_mode" value="$(arg sim_mode)" />
   </node>
 </launch>
