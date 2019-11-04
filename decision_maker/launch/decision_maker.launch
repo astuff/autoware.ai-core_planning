@@ -10,6 +10,7 @@
   <arg name="use_fms" default="false" />
   <arg name="disuse_vector_map" default="false" />
   <arg name="param_num_of_steer_behind" default="30" />
+  <arg name="distance_before_lane_change_signal" default="30" />
   <arg name="change_threshold_dist" default="1.0" />
   <arg name="change_threshold_angle" default="15" />
   <arg name="goal_threshold_dist" default="3.0" />
@@ -29,6 +30,7 @@
     <param name="use_fms" value="$(arg use_fms)" />
     <param name="disuse_vector_map" value="$(arg disuse_vector_map)" />
     <param name="param_num_of_steer_behind" value="$(arg param_num_of_steer_behind)" />
+    <param name="distance_before_lane_change_signal" value="$(arg distance_before_lane_change_signal)"/>
     <param name="change_threshold_dist" value="$(arg change_threshold_dist)" />
     <param name="change_threshold_angle" value="$(arg change_threshold_angle)" />
     <param name="goal_threshold_dist" value="$(arg goal_threshold_dist)" />
