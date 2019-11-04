@@ -142,6 +142,68 @@ void DecisionMakerNode::setWaypointState(autoware_msgs::LaneArray& lane_array)
     }
   }
 
+  // Lane Changes - waypoints crossing whitelines
+  const std::vector<WhiteLine> whitelines = g_vmap.findByFilter([](const WhiteLine& whitelines) { return true; });
+  for (auto& lane : lane_array.lanes)
+  {
+    for (size_t wp_idx = 0; wp_idx < lane.waypoints.size() - 1; wp_idx++)
+    {
+      // Skip waypoints in intersections
+      if (lane.waypoints.at(wp_idx).wpstate.aid == 0)
+      {
+        for (auto& whiteline : whitelines)
+        {
+          geometry_msgs::Point bp =
+            VMPoint2GeoPoint(g_vmap.findByKey(Key<Point>(
+              g_vmap.findByKey(Key<Line>(g_vmap.findByKey(Key<WhiteLine>(whiteline.id)).lid)).bpid)));
+          geometry_msgs::Point fp =
+            VMPoint2GeoPoint(g_vmap.findByKey(Key<Point>(
+              g_vmap.findByKey(Key<Line>(g_vmap.findByKey(Key<WhiteLine>(whiteline.id)).lid)).fpid)));
+          if (amathutils::isIntersectLine(lane.waypoints.at(wp_idx).pose.pose.position,
+                                        lane.waypoints.at(wp_idx + 1).pose.pose.position, bp, fp))
+          {
+            unsigned int i;
+            // turn signal should trigger 30 meters before the lane change
+            for(i = 1; i < wp_idx; i++)
+            {
+              double dist = amathutils::find_distance(lane.waypoints.at(wp_idx).pose.pose.position,
+                                                lane.waypoints.at(wp_idx-i).pose.pose.position);
+              if(dist >= distance_before_lane_change_signal_)
+                break;
+            }
+            int steering_state;
+            if(amathutils::isPointLeftFromLine(lane.waypoints.at(wp_idx).pose.pose.position, bp, fp) > 0)
+            {
+              // If waypoint starts from left side of the whiteline, trigger right turn signal
+              steering_state = autoware_msgs::WaypointState::STR_RIGHT;
+              ROS_INFO("Right turn signal");
+            }
+            else
+            {
+              // If waypoint starts from right side of the whiteline, trigger left turn signal
+              steering_state = autoware_msgs::WaypointState::STR_LEFT;
+              ROS_INFO("Left turn signal");
+            }
+
+            ROS_INFO("From: #%zu(%f, %f, %f)", wp_idx - i,
+                      lane.waypoints.at(wp_idx - i).pose.pose.position.x,
+                      lane.waypoints.at(wp_idx - i).pose.pose.position.y,
+                      lane.waypoints.at(wp_idx - i).pose.pose.position.z);
+            ROS_INFO("To:   #%zu(%f, %f, %f)", wp_idx + 1,
+                      lane.waypoints.at(wp_idx + 1).pose.pose.position.x,
+                      lane.waypoints.at(wp_idx + 1).pose.pose.position.y,
+                      lane.waypoints.at(wp_idx + 1).pose.pose.position.z);
+
+            // Insert right turn steering_state up to where waypoints crosses the lane
+            for(unsigned int j = 0; j <= i + 1; j++){
+              lane.waypoints.at(wp_idx - j + 1).wpstate.steering_state = steering_state;
+            }
+          }
+        }
+      }
+    }
+  }
+
   // STOP
   std::vector<StopLine> stoplines = g_vmap.findByFilter([&](const StopLine& stopline) {
     return ((g_vmap.findByKey(Key<RoadSign>(stopline.signid)).type &
