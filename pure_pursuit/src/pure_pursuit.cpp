@@ -24,7 +24,7 @@ namespace waypoint_follower
 //    so it has a local coorinates of (pt.x, pt.y, pt.z).
 // 2. If we think it is a cirle with a curvature kappa passing the two points,
 //    kappa = 2 * pt.y / (pt.x * pt.x + pt.y * pt.y). For detailed derivation, please
-//    refer to "Integrated Mobile Robot Control" by Omead Amidi 
+//    refer to "Integrated Mobile Robot Control" by Omead Amidi
 //    (CMU-RI-TR-90-17, Equation 3.10 on Page 21)
 double PurePursuit::calcCurvature(const geometry_msgs::Point& target) const
 {
@@ -32,7 +32,7 @@ double PurePursuit::calcCurvature(const geometry_msgs::Point& target) const
   geometry_msgs::Point pt = calcRelativeCoordinate(target, current_pose_);
   double denominator = pt.x * pt.x + pt.y * pt.y;
   double numerator = 2.0 * pt.y;
-  if (denominator != 0.0) 
+  if (denominator != 0.0)
   {
     kappa = numerator / denominator;
   }
@@ -70,7 +70,8 @@ bool PurePursuit::interpolateNextTarget(
   bool found = false;
   tf::Vector3 final_goal;
   // Draw a circle centered at p_C with a radius of search_radius
-  if (dist_CD > search_radius) {
+  if (dist_CD > search_radius)
+  {
     // no intersection in between the circle and AB
     found = false;
   }
@@ -105,7 +106,8 @@ bool PurePursuit::interpolateNextTarget(
     }
   }
 
-  if (found) {
+  if (found)
+  {
     next_target->x = final_goal.x();
     next_target->y = final_goal.y();
     next_target->z = current_pose_.position.z;

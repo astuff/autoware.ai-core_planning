@@ -21,6 +21,6 @@
   <depend>std_msgs</depend>
   <depend>tf2</depend>
   <depend>tf</depend>
-  <depend>roslint</depend>
+  <build_depend>roslint</build_depend>
 
 </package>
