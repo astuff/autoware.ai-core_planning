@@ -40,7 +40,7 @@ private:
   bool use_decision_maker_;
 };
 
-WaypointReplannerNode::WaypointReplannerNode() : pnh_("~"), use_decision_maker_(false), is_first_publish_(true)
+WaypointReplannerNode::WaypointReplannerNode() : pnh_("~"), is_first_publish_(true)
 {
   WaypointReplannerConfig temp_config;
 
@@ -113,6 +113,7 @@ void WaypointReplannerNode::configCallback(const autoware_config_msgs::ConfigWay
 {
   replanning_mode_ = conf->replanning_mode;
   realtime_tuning_mode_ = conf->realtime_tuning_mode;
+  use_decision_maker_ = conf->use_decision_maker;
   replanner_.initParameter(conf);
   if (!lane_array_.lanes.empty() && (is_first_publish_ || realtime_tuning_mode_))
   {
