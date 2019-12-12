@@ -15,7 +15,6 @@
  */
 
 #include <pure_pursuit/pure_pursuit.h>
-#include <cmath>
 
 namespace waypoint_follower
 {
@@ -24,7 +23,7 @@ namespace waypoint_follower
 //    so it has a local coorinates of (pt.x, pt.y, pt.z).
 // 2. If we think it is a cirle with a curvature kappa passing the two points,
 //    kappa = 2 * pt.y / (pt.x * pt.x + pt.y * pt.y). For detailed derivation, please
-//    refer to "Integrated Mobile Robot Control" by Omead Amidi 
+//    refer to "Integrated Mobile Robot Control" by Omead Amidi
 //    (CMU-RI-TR-90-17, Equation 3.10 on Page 21)
 double PurePursuit::calcCurvature(const geometry_msgs::Point& target) const
 {
@@ -32,18 +31,21 @@ double PurePursuit::calcCurvature(const geometry_msgs::Point& target) const
   geometry_msgs::Point pt = calcRelativeCoordinate(target, current_pose_);
   double denominator = pt.x * pt.x + pt.y * pt.y;
   double numerator = 2.0 * pt.y;
+
   if (denominator != 0.0)
+  {
     kappa = numerator / denominator;
+  }
   else
   {
     kappa = numerator > 0.0 ? KAPPA_MIN_ : -KAPPA_MIN_;
   }
-
   return kappa;
 }
 
 // linear interpolation of next target
-bool PurePursuit::interpolateNextTarget(int next_waypoint, geometry_msgs::Point* next_target) const
+bool PurePursuit::interpolateNextTarget(
+  int next_waypoint, geometry_msgs::Point* next_target) const
 {
   int path_size = static_cast<int>(current_waypoints_.size());
   if (next_waypoint == path_size - 1)
@@ -67,7 +69,8 @@ bool PurePursuit::interpolateNextTarget(int next_waypoint, geometry_msgs::Point*
   bool found = false;
   tf::Vector3 final_goal;
   // Draw a circle centered at p_C with a radius of search_radius
-  if (dist_CD > search_radius) {
+  if (dist_CD > search_radius)
+  {
     // no intersection in between the circle and AB
     found = false;
   }
@@ -102,7 +105,8 @@ bool PurePursuit::interpolateNextTarget(int next_waypoint, geometry_msgs::Point*
     }
   }
 
-  if (found) {
+  if (found)
+  {
     next_target->x = final_goal.x();
     next_target->y = final_goal.y();
     next_target->z = current_pose_.position.z;
@@ -134,7 +138,9 @@ void PurePursuit::getNextWaypoint()
     }
 
     // if there exists an effective waypoint
-    if (getPlaneDistance(current_waypoints_.at(i).pose.pose.position, current_pose_.position) > lookahead_distance_)
+    if (getPlaneDistance(
+      current_waypoints_.at(i).pose.pose.position, current_pose_.position)
+      > lookahead_distance_)
     {
       next_waypoint_number_ = i;
       return;
@@ -159,7 +165,8 @@ bool PurePursuit::canGetCurvature(double* output_kappa)
   bool is_valid_curve = false;
   for (const auto& el : current_waypoints_)
   {
-    if (getPlaneDistance(el.pose.pose.position, current_pose_.position) > minimum_lookahead_distance_)
+    if (getPlaneDistance(el.pose.pose.position, current_pose_.position)
+      > minimum_lookahead_distance_)
     {
       is_valid_curve = true;
       break;
@@ -171,15 +178,17 @@ bool PurePursuit::canGetCurvature(double* output_kappa)
   }
   // if is_linear_interpolation_ is false or next waypoint is first or last
   if (!is_linear_interpolation_ || next_waypoint_number_ == 0 ||
-      next_waypoint_number_ == (static_cast<int>(current_waypoints_.size() - 1)))
+    next_waypoint_number_ == (static_cast<int>(current_waypoints_.size() - 1)))
   {
-    next_target_position_ = current_waypoints_.at(next_waypoint_number_).pose.pose.position;
+    next_target_position_ =
+      current_waypoints_.at(next_waypoint_number_).pose.pose.position;
     *output_kappa = calcCurvature(next_target_position_);
     return true;
   }
 
-  // linear interpolation
-  bool interpolation = interpolateNextTarget(next_waypoint_number_, &next_target_position_);
+  // linear interpolation and calculate angular velocity
+  bool interpolation =
+    interpolateNextTarget(next_waypoint_number_, &next_target_position_);
 
   if (!interpolation)
   {
@@ -187,10 +196,11 @@ bool PurePursuit::canGetCurvature(double* output_kappa)
     return false;
   }
 
-  // ROS_INFO("next_target : ( %lf , %lf , %lf)", next_target.x, next_target.y,next_target.z);
+  // ROS_INFO("next_target : ( %lf , %lf , %lf)",
+  //  next_target.x, next_target.y,next_target.z);
 
   *output_kappa = calcCurvature(next_target_position_);
   return true;
 }
 
-}  // waypoint_follower
+}  // namespace waypoint_follower

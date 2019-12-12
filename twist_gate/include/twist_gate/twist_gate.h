@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef TWIST_GATE_H
-#define TWIST_GATE_H
+#ifndef TWIST_GATE_TWIST_GATE_H
+#define TWIST_GATE_TWIST_GATE_H
 
 #include <string>
 #include <iostream>
@@ -29,6 +29,7 @@
 #include <std_msgs/Int32.h>
 #include <std_msgs/String.h>
 
+#include "autoware_config_msgs/ConfigTwistFilter.h"
 #include "autoware_msgs/ControlCommandStamped.h"
 #include "autoware_msgs/RemoteCmd.h"
 #include "autoware_msgs/VehicleCmd.h"
@@ -36,7 +37,7 @@
 #include "tablet_socket_msgs/gear_cmd.h"
 #include "tablet_socket_msgs/mode_cmd.h"
 
-//headers in Autowae Health Checker
+// headers in Autowae Health Checker
 #include <autoware_health_checker/health_checker/health_checker.h>
 
 #define CMD_GEAR_D 1
@@ -69,26 +70,29 @@ private:
   void lamp_cmd_callback(const autoware_msgs::LampCmd::ConstPtr& input_msg);
   void ctrl_cmd_callback(const autoware_msgs::ControlCommandStamped::ConstPtr& input_msg);
   void state_callback(const std_msgs::StringConstPtr& input_msg);
+  void emergency_cmd_callback(const vehicle_cmd_msg_t::ConstPtr& input_msg);
   void timer_callback(const ros::TimerEvent& e);
+  void config_callback(const autoware_config_msgs::ConfigTwistFilter& msg);
+
   void reset_vehicle_cmd_msg();
 
   // spinOnce for test
-  void spinOnce(){ ros::spinOnce(); }
+  void spinOnce() { ros::spinOnce(); }
 
   ros::NodeHandle nh_;
   ros::NodeHandle private_nh_;
   std::shared_ptr<autoware_health_checker::HealthChecker> health_checker_ptr_;
-  ros::Publisher emergency_stop_pub_;
   ros::Publisher control_command_pub_;
   ros::Publisher vehicle_cmd_pub_;
-  ros::Publisher state_cmd_pub_;
   ros::Subscriber remote_cmd_sub_;
+  ros::Subscriber config_sub_;
   std::map<std::string, ros::Subscriber> auto_cmd_sub_stdmap_;
   ros::Timer timer_;
 
   vehicle_cmd_msg_t twist_gate_msg_;
   std_msgs::Bool emergency_stop_msg_;
-  ros::Time remote_cmd_time_;
+  ros::Time remote_cmd_time_, emergency_handling_time_;
+  ros::Time state_time_;
   ros::Duration timeout_period_;
   double loop_rate_;
 
@@ -99,14 +103,16 @@ private:
   {
     AUTO = 1,
     REMOTE = 2
-  } command_mode_,
-      previous_command_mode_;
+  }
+  command_mode_,
+
+  previous_command_mode_;
   std_msgs::String command_mode_topic_;
 
-  bool is_state_drive_ = true;
+  bool is_state_drive_ = false;
   bool use_decision_maker_ = false;
-  // still send is true
-  bool send_emergency_cmd = false;
+
+  bool emergency_handling_active_ = false;
 };
 
-#endif  // TWIST_GATE_H
+#endif  // TWIST_GATE_TWIST_GATE_H
