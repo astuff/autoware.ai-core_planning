@@ -38,9 +38,15 @@ double PurePursuit::calcCurvature(const geometry_msgs::Point& target) const
   }
   else
   {
-    kappa = numerator > 0.0 ? KAPPA_MIN_ : -KAPPA_MIN_;
+    if (numerator > 0)
+    {
+      kappa = KAPPA_MIN_;
+    }
+    else
+    {
+      kappa = -KAPPA_MIN_;
+    }
   }
-
   return kappa;
 }
 
