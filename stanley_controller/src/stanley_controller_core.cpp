@@ -31,7 +31,7 @@ StanleyController::StanleyController()
   , my_velocity_ok_(false)
   , my_steering_ok_(false)
 {
-  pnh_.param("ctrl_period", ctrl_period_, 0.03);
+  pnh_.param("update_rate", update_rate_, 30.0);
   pnh_.param("enable_path_smoothing", enable_path_smoothing_, true);
   pnh_.param("enable_yaw_recalculation", enable_yaw_recalculation_, false);
   pnh_.param("path_filter_moving_ave_num", path_filter_moving_ave_num_, 35);
@@ -66,15 +66,15 @@ StanleyController::StanleyController()
   k_ag_ = mass / (cf * (1 + lf / lr));
 
   /* set up ros system */
-  timer_control_ = nh_.createTimer(ros::Duration(ctrl_period_), &StanleyController::controlTimerCallback, this);
-  std::string out_twist, out_vehicle_cmd, in_vehicle_status, in_waypoints, in_selfpose;
+  timer_control_ = nh_.createTimer(ros::Duration(1.0/update_rate_), &StanleyController::controlTimerCallback, this);
+  std::string out_twist, out_ctrl_cmd, in_vehicle_status, in_waypoints, in_selfpose;
   pnh_.param("out_twist_name", out_twist, std::string("/twist_raw"));
-  pnh_.param("out_vehicle_cmd_name", out_vehicle_cmd, std::string("/ctrl_cmd"));
+  pnh_.param("out_ctrl_cmd_name", out_ctrl_cmd, std::string("/ctrl_raw"));
   pnh_.param("in_waypoints_name", in_waypoints, std::string("/base_waypoints"));
   pnh_.param("in_selfpose_name", in_selfpose, std::string("/current_pose"));
   pnh_.param("in_vehicle_status_name", in_vehicle_status, std::string("/vehicle_status"));
   pub_twist_cmd_ = nh_.advertise<geometry_msgs::TwistStamped>(out_twist, 1);
-  pub_steer_vel_ctrl_cmd_ = nh_.advertise<autoware_msgs::ControlCommandStamped>(out_vehicle_cmd, 1);
+  pub_steer_vel_ctrl_cmd_ = nh_.advertise<autoware_msgs::ControlCommandStamped>(out_ctrl_cmd, 1);
   sub_ref_path_ = nh_.subscribe(in_waypoints, 1, &StanleyController::callbackRefPath, this);
   sub_pose_ = nh_.subscribe(in_selfpose, 1, &StanleyController::callbackPose, this);
   sub_vehicle_status_ = nh_.subscribe(in_vehicle_status, 1, &StanleyController::callbackVehicleStatus, this);
@@ -122,7 +122,7 @@ void StanleyController::controlTimerCallback(const ros::TimerEvent& te)
 
   // longitudinal control
   // Find a preview refrence point ahead of the current nearest reference point
-  double preview_time = nearest_traj_time_ + preview_window_ * ctrl_period_;
+  double preview_time = nearest_traj_time_ + preview_window_ / update_rate_;
   auto it_low = std::lower_bound(ref_traj_.relative_time.begin(), ref_traj_.relative_time.end(), preview_time);
   int preview_index = static_cast<int>(it_low - ref_traj_.relative_time.begin());
 
