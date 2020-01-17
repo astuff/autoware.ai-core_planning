@@ -86,7 +86,7 @@ private:
   std::string output_interface_;           //!< @brief output command type
 
   /* parameters for control*/
-  double ctrl_period_;  //!< @brief control frequency [s]
+  double update_rate_;  //!< @brief control frequency [s]
   double wheelbase_;    //!< @brief vehicle wheelbase length [m] to convert steering angle to angular velocity
 
   /* parameters for path smoothing */
