@@ -179,11 +179,10 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
                                         lane.waypoints.at(wp_idx + 1).pose.pose.position, bp, fp))
           {
             unsigned int i;
-            double dist = 0.0;
             // turn signal should trigger 30 meters before the lane change
             for(i = 1; i < wp_idx; i++)
             {
-              dist = amathutils::find_distance(lane.waypoints.at(wp_idx).pose.pose.position,
+              double dist = amathutils::find_distance(lane.waypoints.at(wp_idx).pose.pose.position,
                                                 lane.waypoints.at(wp_idx-i).pose.pose.position);
               if(dist >= distance_before_lane_change_signal_)
                 break;
