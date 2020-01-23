@@ -201,18 +201,18 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
               ROS_INFO("Left turn signal");
             }
 
-            ROS_INFO("From: #%zu(%f, %f, %f)", wp_idx-i,
-                      lane.waypoints.at(wp_idx-i).pose.pose.position.x,
-                      lane.waypoints.at(wp_idx-i).pose.pose.position.y,
-                      lane.waypoints.at(wp_idx-i).pose.pose.position.z);
-            ROS_INFO("To:   #%zu(%f, %f, %f)", wp_idx+1,
-                      lane.waypoints.at(wp_idx+1).pose.pose.position.x,
-                      lane.waypoints.at(wp_idx+1).pose.pose.position.y,
-                      lane.waypoints.at(wp_idx+1).pose.pose.position.z);
+            ROS_INFO("From: #%zu(%f, %f, %f)", wp_idx - i,
+                      lane.waypoints.at(wp_idx - i).pose.pose.position.x,
+                      lane.waypoints.at(wp_idx - i).pose.pose.position.y,
+                      lane.waypoints.at(wp_idx - i).pose.pose.position.z);
+            ROS_INFO("To:   #%zu(%f, %f, %f)", wp_idx + 1,
+                      lane.waypoints.at(wp_idx + 1).pose.pose.position.x,
+                      lane.waypoints.at(wp_idx + 1).pose.pose.position.y,
+                      lane.waypoints.at(wp_idx + 1).pose.pose.position.z);
 
             // Insert right turn steering_state up to where waypoints crosses the lane
-            for(unsigned int j=0; j <= i+1; j++){
-              lane.waypoints.at(wp_idx-j+1).wpstate.steering_state = steering_state;
+            for(unsigned int j = 0; j <= i + 1; j++){
+              lane.waypoints.at(wp_idx - j + 1).wpstate.steering_state = steering_state;
             }
           }
         }
