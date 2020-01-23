@@ -277,7 +277,7 @@ void DecisionMakerNode::initVectorMap(void)
     // Map must be populated before setupStateCallback() is called
     // in DecisionMakerNode constructor
     g_vmap.subscribe( nh_, Category::POINT | Category::LINE | Category::VECTOR |
-      Category::AREA | Category::STOP_LINE | Category::ROAD_SIGN | Category::CROSS_ROAD,
+      Category::AREA | Category::STOP_LINE | Category::ROAD_SIGN | Category::CROSS_ROAD | Category::WHITE_LINE,
       ros::Duration(1.0));
 
     vmap_loaded =
