@@ -58,7 +58,7 @@ void LaneSelectNode::initForROS()
   pose_twist_sync_.reset(new PoseTwistSync(PoseTwistSyncPolicy(10), sub2_, sub3_));
   pose_twist_sync_->getPolicy()->setMaxIntervalDuration(ros::Duration(0.1));
   pose_twist_sync_->registerCallback(boost::bind(&LaneSelectNode::callbackFromPoseTwistStamped, this, _1, _2));
-  
+
   // setup publisher
   pub1_ = nh_.advertise<autoware_msgs::Lane>("base_waypoints", 1, true);
   pub2_ = nh_.advertise<std_msgs::Int32>("closest_waypoint", 1);
