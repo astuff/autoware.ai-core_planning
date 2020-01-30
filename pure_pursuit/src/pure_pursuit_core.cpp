@@ -287,7 +287,7 @@ void PurePursuitNode::callbackFromWayPoints(
   const autoware_msgs::LaneConstPtr& msg)
 {
   command_linear_velocity_ =
-    (!msg->waypoints.empty()) ? msg->waypoints.at(0).twist.twist.linear.x : 0;
+    (!msg->waypoints.empty()) ? msg->waypoints.at(1).twist.twist.linear.x : 0.0;
   if (add_virtual_end_waypoints_)
   {
     const LaneDirection solved_dir = getLaneDirection(*msg);
