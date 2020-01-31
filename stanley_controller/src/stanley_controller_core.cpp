@@ -155,8 +155,8 @@ bool StanleyController::updateStateError()
 {
   geometry_msgs::Pose nearest_pose;
   double dist_err = 0.0;
-  if (!MPCUtils::calcNearestPoseInterp(ref_traj_, vehicle_status_.pose, nearest_pose, nearest_traj_index_, dist_err,
-                                       heading_error_, nearest_traj_time_))
+  if (!MPCUtils::calcNearestPoseInterp(ref_traj_, vehicle_status_.pose, &nearest_pose, &nearest_traj_index_, &dist_err,
+                                       &heading_error_, &nearest_traj_time_))
   {
     ROS_WARN("[Stanley] error in calculating nearest pose.");
     return false;
@@ -182,7 +182,7 @@ void StanleyController::callbackRefPath(const autoware_msgs::Lane::ConstPtr& msg
 {
   current_waypoints_ = *msg;
 
-  MPCTrajectory traj;
+  MPCUtils::MPCTrajectory traj;
 
   /* calculate relative time */
   std::vector<double> relative_time;
@@ -231,27 +231,27 @@ void StanleyController::callbackRefPath(const autoware_msgs::Lane::ConstPtr& msg
 
   /* publish trajectory for visualize */
   visualization_msgs::Marker markers;
-  convertTrajToMarker(ref_traj_, markers, "ref_traj", 0.0, 0.5, 1.0, 0.05);
+  convertTrajToMarker(ref_traj_, &markers, "ref_traj", 0.0, 0.5, 1.0, 0.05);
   pub_ref_traj_marker_.publish(markers);
 };
 
-void StanleyController::convertTrajToMarker(const MPCTrajectory& traj, visualization_msgs::Marker& marker,
+void StanleyController::convertTrajToMarker(const MPCUtils::MPCTrajectory& traj, visualization_msgs::Marker* marker,
                                             std::string ns, double r, double g, double b, double z)
 {
-  marker.points.clear();
-  marker.header.frame_id = current_waypoints_.header.frame_id;
-  marker.header.stamp = ros::Time();
-  marker.ns = ns;
-  marker.id = 0;
-  marker.type = visualization_msgs::Marker::LINE_STRIP;
-  marker.action = visualization_msgs::Marker::ADD;
-  marker.scale.x = 0.15;
-  marker.scale.y = 0.3;
-  marker.scale.z = 0.3;
-  marker.color.a = 0.9;
-  marker.color.r = r;
-  marker.color.g = g;
-  marker.color.b = b;
+  marker->points.clear();
+  marker->header.frame_id = current_waypoints_.header.frame_id;
+  marker->header.stamp = ros::Time();
+  marker->ns = ns;
+  marker->id = 0;
+  marker->type = visualization_msgs::Marker::LINE_STRIP;
+  marker->action = visualization_msgs::Marker::ADD;
+  marker->scale.x = 0.15;
+  marker->scale.y = 0.3;
+  marker->scale.z = 0.3;
+  marker->color.a = 0.9;
+  marker->color.r = r;
+  marker->color.g = g;
+  marker->color.b = b;
   // display a waypoint at least every meter apart
   int step = static_cast<int>(1.0 / traj_resample_dist_);
   step = step < 1 ? 1 : step;
@@ -261,7 +261,7 @@ void StanleyController::convertTrajToMarker(const MPCTrajectory& traj, visualiza
     p.x = traj.x.at(i);
     p.y = traj.y.at(i);
     p.z = traj.z.at(i) + z;
-    marker.points.push_back(p);
+    marker->points.push_back(p);
   }
 }
 
