@@ -20,7 +20,7 @@
 #include <vector>
 #include <iostream>
 
-namespace stanley_controller
+namespace MPCUtils
 {
 /**
  * @class trajectory class for mpc follower
@@ -54,5 +54,5 @@ public:
    */
   unsigned int size() const;
 };
-}  // namespace stanley_controller
+}  // namespace MPCUtils
 #endif  // STANLEY_CONTROLLER_MPC_TRAJECTORY_H

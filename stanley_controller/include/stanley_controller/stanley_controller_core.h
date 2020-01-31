@@ -81,7 +81,7 @@ private:
   ros::Timer timer_control_;               //!< @brief timer for control command computation
   ros::Publisher pub_ref_traj_marker_;
 
-  MPCTrajectory ref_traj_;                 //!< @brief reference trajectory to be followed
+  MPCUtils::MPCTrajectory ref_traj_;       //!< @brief reference trajectory to be followed
   autoware_msgs::Lane current_waypoints_;  //!< @brief current waypoints to be followed
   std::string output_interface_;           //!< @brief output command type
 
@@ -184,8 +184,8 @@ private:
   /**
    * @brief convert MPCTraj to visualizaton marker for visualization
    */
-  void convertTrajToMarker(const MPCTrajectory& traj, visualization_msgs::Marker& markers, std::string ns, double r,
-                           double g, double b, double z);
+  void convertTrajToMarker(const MPCUtils::MPCTrajectory& traj, visualization_msgs::Marker* markers, std::string ns,
+                           double r, double g, double b, double z);
 };
 }  // namespace stanley_controller
 #endif  // STANLEY_CONTROLLER_STANLEY_CONTROLLER_CORE_H
