@@ -1,34 +1,33 @@
-#ifndef __DECISION_MAKER_NODE__
-#define __DECISION_MAKER_NODE__
+// Copyright 2018-2020 Autoware Foundation. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
+#ifndef DECISION_MAKER_DECISION_MAKER_NODE_HPP
+#define DECISION_MAKER_DECISION_MAKER_NODE_HPP
+
+#include <cstdio>
+#include <map>
+#include <random>
+#include <string>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include <ros/ros.h>
 #include <ros/spinner.h>
-#include <std_msgs/Float64.h>
-#include <std_msgs/Float64MultiArray.h>
-#include <std_msgs/String.h>
-#include <stdio.h>
-#include <random>
-#include <string>
-
-#include <geometry_msgs/Point.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/TwistStamped.h>
-#include <jsk_recognition_msgs/BoundingBoxArray.h>
-#include <jsk_recognition_msgs/BoundingBoxArray.h>
-#include <jsk_rviz_plugins/OverlayText.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <std_msgs/Float64.h>
-#include <std_msgs/Float64MultiArray.h>
-#include <std_msgs/Int32.h>
-#include <std_msgs/String.h>
-#include <tf/transform_listener.h>
-#include <tf/transform_listener.h>
-#include <visualization_msgs/MarkerArray.h>
-#include <visualization_msgs/MarkerArray.h>
 
 #include <autoware_config_msgs/ConfigDecisionMaker.h>
+#include <autoware_lanelet2_msgs/MapBin.h>
 #include <autoware_msgs/CloudClusterArray.h>
 #include <autoware_msgs/Lane.h>
 #include <autoware_msgs/LaneArray.h>
@@ -38,21 +37,41 @@
 #include <autoware_msgs/VehicleLocation.h>
 #include <autoware_msgs/Waypoint.h>
 #include <autoware_msgs/WaypointState.h>
-#include <vector_map/vector_map.h>
+#include <geometry_msgs/Point.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/TwistStamped.h>
+#include <jsk_recognition_msgs/BoundingBoxArray.h>
+#include <jsk_rviz_plugins/OverlayText.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <std_msgs/Float64.h>
+#include <std_msgs/Float64MultiArray.h>
+#include <std_msgs/Int32.h>
+#include <std_msgs/String.h>
+#include <visualization_msgs/MarkerArray.h>
 
 #include <amathutils_lib/amathutils.hpp>
 #include <cross_road_area.hpp>
 #include <decision_maker_param.hpp>
 #include <state_machine_lib/state_context.hpp>
+#include <tf/transform_listener.h>
+#include <vector_map/vector_map.h>
 
 #include <lanelet2_io/Io.h>
 #include <lanelet2_routing/Route.h>
 
-#include <autoware_lanelet2_msgs/MapBin.h> 
-
 namespace decision_maker
 {
-using namespace vector_map;
+using vector_map::Area;
+using vector_map::Category;
+using vector_map::CrossRoad;
+using vector_map::Key;
+using vector_map::Line;
+using vector_map::Point;
+using vector_map::RoadSign;
+using vector_map::StopLine;
+using vector_map::VectorMap;
+using vector_map::WhiteLine;
+
 using cstring_t = const std::string;
 
 enum class E_Lamp : int32_t
@@ -114,11 +133,17 @@ struct AutowareStatus
   int ordered_stop_idx;
   int prev_ordered_idx;
 
-  AutowareStatus(void) : closest_waypoint(-1), obstacle_waypoint(-1), stopline_waypoint(-1), velocity(0), found_stopsign_idx(-1), prev_stopped_wpidx(-1), ordered_stop_idx(-1), prev_ordered_idx(-1)
+  AutowareStatus(void) :
+    closest_waypoint(-1),
+    obstacle_waypoint(-1),
+    stopline_waypoint(-1),
+    velocity(0),
+    found_stopsign_idx(-1),
+    prev_stopped_wpidx(-1),
+    ordered_stop_idx(-1),
+    prev_ordered_idx(-1)
   {
   }
-
-  // control status
 };
 
 class DecisionMakerNode
@@ -437,4 +462,4 @@ public:
 
 }  // namespace decision_maker
 
-#endif
+#endif  // DECISION_MAKER_DECISION_MAKER_NODE_HPP
