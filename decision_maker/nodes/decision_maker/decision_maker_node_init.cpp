@@ -1,4 +1,21 @@
-#include <decision_maker_node.hpp>
+// Copyright 2018-2020 Autoware Foundation. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "decision_maker_node.hpp"
+
+#include <algorithm>
+#include <vector>
 
 namespace decision_maker
 {
@@ -239,7 +256,7 @@ void DecisionMakerNode::initROS()
   }
   else
   {
-    if(use_lanelet_map_)
+    if (use_lanelet_map_)
     {
       initLaneletMap();
     }
@@ -278,7 +295,7 @@ void DecisionMakerNode::initVectorMap(void)
     // in DecisionMakerNode constructor
     ROS_INFO("Subscribing to vector map topics.");
 
-    g_vmap.subscribe( nh_, Category::POINT | Category::LINE | Category::VECTOR |
+    g_vmap.subscribe(nh_, Category::POINT | Category::LINE | Category::VECTOR |
       Category::AREA | Category::STOP_LINE | Category::ROAD_SIGN | Category::CROSS_ROAD,
       ros::Duration(1.0));
 
@@ -297,7 +314,8 @@ void DecisionMakerNode::initVectorMap(void)
     }
   }
 
-  const std::vector<CrossRoad> crossroads = g_vmap.findByFilter([](const CrossRoad& crossroad) { return true; });
+  const std::vector<CrossRoad> crossroads =
+    g_vmap.findByFilter([](const CrossRoad& crossroad) { return true; });  // NOLINT
   if (crossroads.empty())
   {
     ROS_INFO("crossroads have not found\n");
@@ -318,11 +336,16 @@ void DecisionMakerNode::initVectorMap(void)
     int points_count = 0;
 
     const std::vector<Line> lines =
-        g_vmap.findByFilter([&area](const Line& line) { return area.slid <= line.lid && line.lid <= area.elid; });
+      g_vmap.findByFilter(
+        [&area](const Line& line)
+        {
+          return area.slid <= line.lid && line.lid <= area.elid;
+        }
+      );  // NOLINT
     for (const auto& line : lines)
     {
       const std::vector<Point> points =
-          g_vmap.findByFilter([&line](const Point& point) { return line.bpid == point.pid; });
+        g_vmap.findByFilter([&line](const Point& point) { return line.bpid == point.pid; });  // NOLINT
       for (const auto& point : points)
       {
         geometry_msgs::Point _point;
@@ -347,8 +370,8 @@ void DecisionMakerNode::initVectorMap(void)
         z = _point.z;
       }  // points iter
     }    // line iter
-    carea.bbox.pose.position.x = x_avg / (double)points_count * 1.5 /* expanding rate */;
-    carea.bbox.pose.position.y = y_avg / (double)points_count * 1.5;
+    carea.bbox.pose.position.x = x_avg / static_cast<double>(points_count) * 1.5;  // expanding rate
+    carea.bbox.pose.position.y = y_avg / static_cast<double>(points_count) * 1.5;
     carea.bbox.pose.position.z = z;
     carea.bbox.dimensions.x = x_max - x_min;
     carea.bbox.dimensions.y = y_max - y_min;
@@ -357,4 +380,4 @@ void DecisionMakerNode::initVectorMap(void)
     intersects.push_back(carea);
   }
 }
-}
+}  // namespace decision_maker

@@ -1,25 +1,38 @@
+// Copyright 2018-2020 Autoware Foundation. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "decision_maker_node.hpp"
+
+#include <cstdio>
+#include <random>
+
 #include <ros/ros.h>
 #include <ros/spinner.h>
+
+#include <autoware_msgs/Lane.h>
+#include <geometry_msgs/Point.h>
+#include <geometry_msgs/Pose.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <jsk_recognition_msgs/BoundingBoxArray.h>
 #include <std_msgs/Float64.h>
 #include <std_msgs/Float64MultiArray.h>
 #include <std_msgs/String.h>
-#include <stdio.h>
+#include <visualization_msgs/MarkerArray.h>
 
 // lib
 #include <state_machine_lib/state.hpp>
 #include <state_machine_lib/state_context.hpp>
-
-#include <decision_maker_node.hpp>
-//#include <vector_map/vector_map.h>
-
-#include <autoware_msgs/Lane.h>
-#include <jsk_recognition_msgs/BoundingBoxArray.h>
-#include <visualization_msgs/MarkerArray.h>
-#include <random>
-
-#include <geometry_msgs/Point.h>
-#include <geometry_msgs/Pose.h>
-#include <geometry_msgs/PoseStamped.h>
 
 namespace decision_maker
 {
@@ -55,4 +68,4 @@ void DecisionMakerNode::run(void)
     loop_rate.sleep();
   }
 }
-}
+}  // namespace decision_maker

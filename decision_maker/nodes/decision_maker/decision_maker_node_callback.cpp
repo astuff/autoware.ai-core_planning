@@ -1,19 +1,36 @@
-#include <cmath>
-#include <stdio.h>
+// Copyright 2018-2020 Autoware Foundation. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-#include <geometry_msgs/PoseStamped.h>
-#include <jsk_recognition_msgs/BoundingBoxArray.h>
-#include <jsk_rviz_plugins/OverlayText.h>
+#include "decision_maker_node.hpp"
+
+#include <cmath>
+#include <cstdio>
+#include <map>
+#include <string>
+#include <vector>
+
 #include <ros/ros.h>
-#include <std_msgs/String.h>
-#include <std_msgs/UInt8.h>
 
 #include <autoware_msgs/CloudClusterArray.h>
 #include <autoware_msgs/Lane.h>
 #include <autoware_msgs/TrafficLight.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <jsk_recognition_msgs/BoundingBoxArray.h>
+#include <jsk_rviz_plugins/OverlayText.h>
+#include <std_msgs/String.h>
+#include <std_msgs/UInt8.h>
 
-#include <cross_road_area.hpp>
-#include <decision_maker_node.hpp>
 #include <state_machine_lib/state.hpp>
 #include <state_machine_lib/state_context.hpp>
 
@@ -24,6 +41,8 @@
 #include <lanelet2_core/primitives/BasicRegulatoryElements.h>
 #include <lanelet2_routing/RoutingGraph.h>
 #include <lanelet2_traffic_rules/TrafficRulesFactory.h>
+
+#include "cross_road_area.hpp"
 
 namespace
 {
@@ -122,7 +141,7 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
     {
       // To straight/left/right recognition by using angle
       // between first-waypoint and end-waypoint in intersection area.
-      int angle_deg = ((int)std::floor(calcIntersectWayAngle(laneinArea)));  // normalized
+      int angle_deg = (static_cast<int>(std::floor(calcIntersectWayAngle(laneinArea))));  // normalized
       int steering_state;
 
       if (angle_deg <= ANGLE_LEFT)
@@ -159,7 +178,8 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
   }
 
   // Lane Changes - waypoints crossing whitelines
-  const std::vector<WhiteLine> whitelines = g_vmap.findByFilter([](const WhiteLine& whitelines) { return true; });
+  const std::vector<WhiteLine> whitelines = g_vmap.findByFilter(
+    [](const WhiteLine& whitelines) { return true; });  // NOLINT
   for (auto& lane : lane_array.lanes)
   {
     for (size_t wp_idx = 0; wp_idx < lane.waypoints.size() - 1; wp_idx++)
@@ -180,15 +200,16 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
           {
             unsigned int i;
             // turn signal should trigger 30 meters before the lane change
-            for(i = 1; i < wp_idx; i++)
+            for (i = 1; i < wp_idx; i++)
             {
               double dist = amathutils::find_distance(lane.waypoints.at(wp_idx).pose.pose.position,
                                                 lane.waypoints.at(wp_idx-i).pose.pose.position);
-              if(dist >= distance_before_lane_change_signal_)
+              if (dist >= distance_before_lane_change_signal_)
                 break;
             }
+
             int steering_state;
-            if(amathutils::isPointLeftFromLine(lane.waypoints.at(wp_idx).pose.pose.position, bp, fp) > 0)
+            if (amathutils::isPointLeftFromLine(lane.waypoints.at(wp_idx).pose.pose.position, bp, fp) > 0)
             {
               // If waypoint starts from left side of the whiteline, trigger right turn signal
               steering_state = autoware_msgs::WaypointState::STR_RIGHT;
@@ -211,7 +232,8 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
                       lane.waypoints.at(wp_idx + 1).pose.pose.position.z);
 
             // Insert right turn steering_state up to where waypoints crosses the lane
-            for(unsigned int j = 0; j <= i + 1; j++){
+            for (unsigned int j = 0; j <= i + 1; j++)
+            {
               lane.waypoints.at(wp_idx - j + 1).wpstate.steering_state = steering_state;
             }
           }
@@ -221,10 +243,13 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
   }
 
   // Get stoplines associated with stop signs (not traffic lights)
-  std::vector<StopLine> stoplines = g_vmap.findByFilter([&](const StopLine& stopline) {
-    return ((g_vmap.findByKey(Key<RoadSign>(stopline.signid)).type &
-             (autoware_msgs::WaypointState::TYPE_STOP | autoware_msgs::WaypointState::TYPE_STOPLINE)) != 0);
-  });
+  std::vector<StopLine> stoplines = g_vmap.findByFilter(
+    [&](const StopLine& stopline)
+    {
+      return ((g_vmap.findByKey(Key<RoadSign>(stopline.signid)).type &
+        (autoware_msgs::WaypointState::TYPE_STOP | autoware_msgs::WaypointState::TYPE_STOPLINE)) != 0);
+    }
+  );  // NOLINT
 
   for (auto& lane : lane_array.lanes)
   {

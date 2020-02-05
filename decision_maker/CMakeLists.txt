@@ -46,8 +46,13 @@ catkin_package(
     vector_map_msgs
 )
 
-set(ROSLINT_CPP_OPTS "--filter=-build/c++14")
-roslint_cpp(test/src/test_node_lanelet2_functions.cpp)
+file(GLOB_RECURSE ROSLINT_FILES
+  LIST_DIRECTORIES false
+  *.cpp *.h *.hpp
+)
+
+list(APPEND ROSLINT_CPP_OPTS "--extensions=cc,h,hpp,cpp,cu,cuh" "--filter=-build/c++11,-runtime/references")
+roslint_cpp(${ROSLINT_FILES})
 
 include_directories(
   include/decision_maker
