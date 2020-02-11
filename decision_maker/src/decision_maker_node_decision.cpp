@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "decision_maker_node.hpp"
+#include "decision_maker/decision_maker_node.h"
 
 #include <cstdio>
 #include <numeric>
@@ -29,48 +29,9 @@
 #include <jsk_rviz_plugins/OverlayText.h>
 #include <std_msgs/String.h>
 
-#include "cross_road_area.hpp"
-
 namespace decision_maker
 {
-/* do not use this within callback */
-bool DecisionMakerNode::waitForEvent(cstring_t& key, const bool& flag)
-{
-  const uint32_t monitoring_rate = 20;  // Hz
 
-  ros::Rate loop_rate(monitoring_rate);
-  while (ros::ok())
-  {
-    if (isEventFlagTrue(key) == flag)
-    {
-      break;
-    }
-    loop_rate.sleep();
-  }
-  return true;
-}
-
-bool DecisionMakerNode::waitForEvent(cstring_t& key, const bool& flag, const double& timeout_sec)
-{
-  const uint32_t monitoring_rate = 20;  // Hz
-  ros::Rate loop_rate(monitoring_rate);
-
-  ros::Time entry_time = ros::Time::now();
-
-  while (ros::ok())
-  {
-    if (isEventFlagTrue(key) == flag)
-    {
-      return true;
-    }
-    if ((ros::Time::now() - entry_time).toSec() >= timeout_sec)
-    {
-      break;
-    }
-    loop_rate.sleep();
-  }
-  return false;
-}
 double DecisionMakerNode::calcIntersectWayAngle(const autoware_msgs::Lane& laneinArea)
 {
   double diff = 0.0;
@@ -169,4 +130,5 @@ bool DecisionMakerNode::isArrivedGoal() const
 
   return false;
 }
+
 }  // namespace decision_maker

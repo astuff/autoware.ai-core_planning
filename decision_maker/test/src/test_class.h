@@ -12,24 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef TEST_SRC_TEST_CLASS_H
-#define TEST_SRC_TEST_CLASS_H
+#ifndef TEST_SRC_TEST_CLASS_H  // NOLINT
+#define TEST_SRC_TEST_CLASS_H  // NOLINT
+
+#include "decision_maker/decision_maker_node.h"
 
 #include <utility>
 #include <string>
-
-#include "decision_maker_node.hpp"
 
 namespace decision_maker
 {
 class TestClass
 {
 public:
-  TestClass()
-  {
-  }
-
-  DecisionMakerNode* dmn;
+  std::unique_ptr<DecisionMakerNode> dmn;
 
   void createFinalWaypoints()
   {
@@ -140,4 +136,4 @@ public:
 
 }  // namespace decision_maker
 
-#endif  // TEST_SRC_TEST_CLASS_H
+#endif  // TEST_SRC_TEST_CLASS_H  // NOLINT

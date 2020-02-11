@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef DECISION_MAKER_CROSS_ROAD_AREA_HPP
-#define DECISION_MAKER_CROSS_ROAD_AREA_HPP
+#ifndef DECISION_MAKER_CROSS_ROAD_AREA_H
+#define DECISION_MAKER_CROSS_ROAD_AREA_H
 
 #include <vector>
 
@@ -26,41 +26,19 @@ namespace decision_maker
 class CrossRoadArea
 {
 public:
+  CrossRoadArea();
+  static bool isInsideArea(const CrossRoadArea* _TargetArea, geometry_msgs::Point pt);
+
   int id;
   int area_id;
   std::vector<geometry_msgs::Point> points;
   jsk_recognition_msgs::BoundingBox bbox;
-
   std::vector<autoware_msgs::Lane> insideLanes;
   std::vector<geometry_msgs::Point> insideWaypoint_points;
 
-  CrossRoadArea(void)
-  {
-    id = 0;
-    area_id = 0;
-    points.clear();
-    insideLanes.clear();
-    insideWaypoint_points.clear();
-  }
-
-  static CrossRoadArea* findClosestCrossRoad(const autoware_msgs::Lane& _finalwaypoints,
-                                             std::vector<CrossRoadArea>& intersects);
-  static bool isInsideArea(const CrossRoadArea* _TargetArea, geometry_msgs::Point pt);
-
-  static CrossRoadArea* getCrossRoadArea(std::vector<CrossRoadArea>& areas, int aid)
-  {
-    CrossRoadArea* ret = nullptr;
-    for (auto& area : areas)
-    {
-      if (area.area_id == aid)
-      {
-        ret = &area;
-        break;
-      }
-    }
-    return ret;
-  }
+private:
+  static std::vector<geometry_msgs::Point> convhull(const CrossRoadArea* _TargetArea);
 };
 }  // namespace decision_maker
 
-#endif  // DECISION_MAKER_CROSS_ROAD_AREA_HPP
+#endif  // DECISION_MAKER_CROSS_ROAD_AREA_H

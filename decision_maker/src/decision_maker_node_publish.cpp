@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "decision_maker_node.hpp"
+#include "decision_maker/decision_maker_node.h"
 
 #include <string>
 #include <vector>
@@ -135,13 +135,6 @@ void DecisionMakerNode::update_msgs(void)
   }
 }
 
-void DecisionMakerNode::publishLightColor(const int status)
-{
-  autoware_msgs::TrafficLight msg;
-  msg.traffic_light = status;
-  Pubs["light_color"].publish(msg);
-}
-
 void DecisionMakerNode::publishStoplineWaypointIdx(const int wp_idx)
 {
   std_msgs::Int32 msg;
@@ -149,17 +142,4 @@ void DecisionMakerNode::publishStoplineWaypointIdx(const int wp_idx)
   Pubs["state/stopline_wpidx"].publish(msg);
 }
 
-void DecisionMakerNode::publishToVelocityArray()
-{
-  int count = 0;
-  std_msgs::Float64MultiArray msg;
-
-  for (const auto& i : current_status_.finalwaypoints.waypoints)
-  {
-    msg.data.push_back(amathutils::mps2kmph(i.twist.twist.linear.x));
-    if (++count >= 10)
-      break;
-  }
-  Pubs["target_velocity_array"].publish(msg);
-}
 }  // namespace decision_maker

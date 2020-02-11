@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "decision_maker_node.hpp"
+#include "decision_maker/decision_maker_node.h"
 
 #include <cmath>
 #include <cstdio>
@@ -41,8 +41,6 @@
 #include <lanelet2_core/primitives/BasicRegulatoryElements.h>
 #include <lanelet2_routing/RoutingGraph.h>
 #include <lanelet2_traffic_rules/TrafficRulesFactory.h>
-
-#include "cross_road_area.hpp"
 
 namespace
 {
