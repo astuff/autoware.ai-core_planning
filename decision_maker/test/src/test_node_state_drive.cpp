@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "test_class.h"  // NOLINT
+#include "decision_maker/decision_maker_node.h"
+
 #include <gtest/gtest.h>
 #include <ros/ros.h>
 
 #include <utility>
 
 #include <amathutils_lib/amathutils.hpp>
-#include "decision_maker_node.hpp"
-
-#include "test_class.hpp"
 
 namespace decision_maker
 {
@@ -28,19 +28,14 @@ class TestSuite :
   public ::testing::Test
 {
 public:
-  TestSuite() {}
-  ~TestSuite() {}
-
   TestClass test_obj_;
 
 protected:
   virtual void SetUp()
   {
-    int argc;
-    char **argv;
-    test_obj_.dmn = new DecisionMakerNode(argc, argv);
+    test_obj_.dmn.reset(new DecisionMakerNode);
   }
-  virtual void TearDown() { delete test_obj_.dmn; }
+  virtual void TearDown() {}
 };
 
 TEST_F(TestSuite, getSteeringStateFromWaypoint)

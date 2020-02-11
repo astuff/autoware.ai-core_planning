@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "decision_maker_node.hpp"
+#include "decision_maker/decision_maker_node.h"
 
 namespace decision_maker
 {

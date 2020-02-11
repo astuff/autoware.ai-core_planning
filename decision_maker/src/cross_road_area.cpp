@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "cross_road_area.hpp"
+#include "decision_maker/cross_road_area.h"
 
 #include <cmath>
 #include <vector>
@@ -21,45 +21,20 @@
 
 namespace decision_maker
 {
-#define TARGET_WAYPOINTS_NUM 15  // need to change rosparam
-CrossRoadArea* CrossRoadArea::findClosestCrossRoad(const autoware_msgs::Lane& _finalwaypoints,
-                                                   std::vector<CrossRoadArea>& intersects)
+
+#define TARGET_WAYPOINTS_NUM 15  // TODO(someone): need to change rosparam
+
+CrossRoadArea::CrossRoadArea()
+  : id{},
+    area_id{},
+    points{},
+    bbox{},
+    insideLanes{},
+    insideWaypoint_points{}
 {
-  CrossRoadArea* _area = nullptr;
-
-  geometry_msgs::Point pa;
-  geometry_msgs::Point pb;
-
-  double _min_distance = DBL_MAX;
-
-  if (!_finalwaypoints.waypoints.empty())
-  {
-    pa = _finalwaypoints.waypoints[TARGET_WAYPOINTS_NUM].pose.pose.position;
-  }
-
-  for (size_t i = 0; i < intersects.size(); i++)
-  {
-    pb = intersects[i].bbox.pose.position;
-
-    const double range_of_waypoint_and_intersection = amathutils::find_distance(pa, pb);
-
-    intersects[i].bbox.label = 0;
-    if (_min_distance >= range_of_waypoint_and_intersection)
-    {
-      _area = &intersects[i];
-      _min_distance = range_of_waypoint_and_intersection;  //
-    }
-  }
-
-  if (_area)
-  {
-    _area->bbox.label = 3;
-  }
-
-  return _area;
 }
 
-std::vector<geometry_msgs::Point> convhull(const CrossRoadArea* _TargetArea)
+std::vector<geometry_msgs::Point> CrossRoadArea::convhull(const CrossRoadArea* _TargetArea)
 {
   std::vector<int> enablePoints;
 
@@ -148,4 +123,5 @@ bool CrossRoadArea::isInsideArea(const CrossRoadArea* _TargetArea, geometry_msgs
 
   return false;
 }
+
 }  // namespace decision_maker

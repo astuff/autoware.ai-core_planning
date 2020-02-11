@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef DECISION_MAKER_DECISION_MAKER_NODE_HPP
-#define DECISION_MAKER_DECISION_MAKER_NODE_HPP
+#ifndef DECISION_MAKER_DECISION_MAKER_NODE_H
+#define DECISION_MAKER_DECISION_MAKER_NODE_H
+
+#include "decision_maker/cross_road_area.h"
 
 #include <cstdio>
 #include <map>
@@ -50,8 +52,6 @@
 #include <visualization_msgs/MarkerArray.h>
 
 #include <amathutils_lib/amathutils.hpp>
-#include <cross_road_area.hpp>
-#include <decision_maker_param.hpp>
 #include <state_machine_lib/state_context.hpp>
 #include <tf/transform_listener.h>
 #include <vector_map/vector_map.h>
@@ -74,6 +74,16 @@ using vector_map::WhiteLine;
 
 using cstring_t = const std::string;
 
+constexpr double ANGLE_NEUTRAL = 0;
+constexpr double ANGLE_CURVE = 40;
+constexpr double ANGLE_LEFT = (ANGLE_NEUTRAL - ANGLE_CURVE);
+constexpr double ANGLE_RIGHT = (ANGLE_NEUTRAL + ANGLE_CURVE);
+
+constexpr char TPNAME_BASED_LANE_WAYPOINTS_ARRAY[] = "/based/lane_waypoints_array";
+constexpr char TPNAME_CONTROL_LANE_WAYPOINTS_ARRAY[] = "/lane_waypoints_array";
+constexpr int LAMP_ON = 1;
+constexpr int LAMP_OFF = 0;
+
 enum class E_Lamp : int32_t
 {
   LAMP_EMPTY = -1,
@@ -82,15 +92,6 @@ enum class E_Lamp : int32_t
   LAMP_LEFT = 2,
   LAMP_HAZARD = 3
 };
-enum class E_Control : int32_t
-{
-  KEEP = -1,
-  STOP = 1,
-  DECELERATE = 2,
-  ACCELERATE = 3,
-  OTHERS = 4,
-};
-
 enum class E_ChangeFlags : int32_t
 {
   STRAIGHT,
@@ -99,11 +100,6 @@ enum class E_ChangeFlags : int32_t
 
   UNKNOWN = -1,
 };
-
-inline bool hasvMap(void)
-{
-  return true;
-}
 
 template <class T>
 typename std::underlying_type<T>::type enumToInteger(T t)
@@ -167,20 +163,6 @@ private:
   lanelet::LaneletMapPtr lanelet_map_;
   lanelet::routing::RoutingGraphPtr routing_graph_;
 
-  class DetectionArea
-  {
-  public:
-    double x1, x2;
-    double y1, y2;
-
-    DetectionArea()
-    {
-    }
-  };
-  DetectionArea detectionArea_;
-
-  bool isManualLight;
-
   // Param
   bool auto_mission_reload_;
   bool auto_engage_;
@@ -212,12 +194,9 @@ private:
   void update(void);
   void update_msgs(void);
 
-  void publishToVelocityArray();
-
   void publishOperatorHelpMessage(const cstring_t& message);
   void publishLampCmd(const E_Lamp& status);
   void publishStoplineWaypointIdx(const int wp_idx);
-  void publishLightColor(const int status);
 
   /* decision */
   void tryNextState(cstring_t& key);
@@ -226,8 +205,6 @@ private:
   void insertPointWithinCrossRoad(const std::vector<CrossRoadArea>& _intersects, autoware_msgs::LaneArray& lane_array);
   void setWaypointStateUsingVectorMap(autoware_msgs::LaneArray& lane_array);
   void setWaypointStateUsingLanelet2Map(autoware_msgs::LaneArray& lane_array);
-  bool waitForEvent(cstring_t& key, const bool& flag);
-  bool waitForEvent(cstring_t& key, const bool& flag, const double& timeout);
   bool drivingMissionCheck(void);
 
   double calcIntersectWayAngle(const autoware_msgs::Lane& laneinArea);
@@ -242,10 +219,6 @@ private:
   bool isVehicleOnLaneArea(void)
   {
     return true;
-  }
-  bool isVehicleOnFreeArea(void)
-  {
-    return false;
   }
 
   void setupStateCallback(void);
@@ -382,68 +355,15 @@ private:
   }
 
 public:
-  state_machine::StateContext* ctx_vehicle;
-  state_machine::StateContext* ctx_mission;
-  state_machine::StateContext* ctx_behavior;
-  state_machine::StateContext* ctx_motion;
+  std::unique_ptr<state_machine::StateContext> ctx_vehicle;
+  std::unique_ptr<state_machine::StateContext> ctx_mission;
+  std::unique_ptr<state_machine::StateContext> ctx_behavior;
+  std::unique_ptr<state_machine::StateContext> ctx_motion;
   VectorMap g_vmap;
 
-  DecisionMakerNode(int argc, char** argv)
-    : private_nh_("~")
-    , auto_mission_reload_(false)
-    , auto_engage_(false)
-    , auto_mission_change_(false)
-    , use_fms_(false)
-    , disuse_vector_map_(false)
-    , insert_stop_line_wp_(true)
-    , param_num_of_steer_behind_(30)
-    , distance_before_lane_change_signal_(30)
-    , change_threshold_dist_(1.0)
-    , change_threshold_angle_(15)
-    , goal_threshold_dist_(3.0)
-    , goal_threshold_vel_(0.1)
-    , stopped_vel_(0.1)
-    , stopline_reset_count_(20)
-    , sim_mode_(false)
-    , use_lanelet_map_(false)
-  {
-    std::string file_name_mission;
-    std::string file_name_vehicle;
-    std::string file_name_behavior;
-    std::string file_name_motion;
-    private_nh_.getParam("state_vehicle_file_name", file_name_vehicle);
-    private_nh_.getParam("state_mission_file_name", file_name_mission);
-    private_nh_.getParam("state_behavior_file_name", file_name_behavior);
-    private_nh_.getParam("state_motion_file_name", file_name_motion);
-    private_nh_.getParam("auto_mission_reload", auto_mission_reload_);
-    private_nh_.getParam("auto_engage", auto_engage_);
-    private_nh_.getParam("auto_mission_change", auto_mission_change_);
-    private_nh_.getParam("use_fms", use_fms_);
-    private_nh_.getParam("disuse_vector_map", disuse_vector_map_);
-    private_nh_.getParam("param_num_of_steer_behind", param_num_of_steer_behind_);
-    private_nh_.getParam("distance_before_lane_change_signal", distance_before_lane_change_signal_);
-    private_nh_.getParam("change_threshold_dist", change_threshold_dist_);
-    private_nh_.getParam("change_threshold_angle", change_threshold_angle_);
-    private_nh_.getParam("goal_threshold_dist", goal_threshold_dist_);
-    private_nh_.getParam("goal_threshold_vel", goal_threshold_vel_);
-    private_nh_.getParam("stopped_vel", stopped_vel_);
-    private_nh_.getParam("stopline_reset_count", stopline_reset_count_);
-    private_nh_.getParam("sim_mode", sim_mode_);
-    private_nh_.getParam("use_ll2", use_lanelet_map_);
-    private_nh_.param<std::string>("stop_sign_id", stop_sign_id_, "stop_sign");
+  DecisionMakerNode();
 
-    current_status_.prev_stopped_wpidx = -1;
-
-    ctx_vehicle = new state_machine::StateContext(file_name_vehicle, "autoware_states_vehicle");
-    ctx_mission = new state_machine::StateContext(file_name_mission, "autoware_states_mission");
-    ctx_behavior = new state_machine::StateContext(file_name_behavior, "autoware_states_behavior");
-    ctx_motion = new state_machine::StateContext(file_name_motion, "autoware_states_motion");
-    init();
-    setupStateCallback();
-  }
-
-  void init(void);
-  void run(void);
+  void run();
 
   bool isSubscriberRegistered(cstring_t& topic_name)
   {
@@ -462,4 +382,4 @@ public:
 
 }  // namespace decision_maker
 
-#endif  // DECISION_MAKER_DECISION_MAKER_NODE_HPP
+#endif  // DECISION_MAKER_DECISION_MAKER_NODE_H

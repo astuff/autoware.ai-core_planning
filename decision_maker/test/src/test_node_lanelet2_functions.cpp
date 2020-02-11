@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "test_class.h"  // NOLINT
+#include "decision_maker/decision_maker_node.h"
+
 #include <gtest/gtest.h>
 #include <ros/ros.h>
 
@@ -23,10 +26,8 @@
 #include <lanelet2_core/primitives/BasicRegulatoryElements.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 
+#include <map>
 #include <string>
-
-#include "decision_maker_node.hpp"
-#include "test_class.hpp"
 
 using lanelet::Lanelet;
 using lanelet::LineString3d;
@@ -37,16 +38,10 @@ using lanelet::utils::getId;
 
 namespace decision_maker
 {
-class TestSuiteLanelet : public ::testing::Test
+class TestSuiteLanelet
+  : public ::testing::Test
 {
 public:
-  TestSuiteLanelet()
-  {
-  }
-  ~TestSuiteLanelet()
-  {
-  }
-
   TestClass test_obj_;
 
   lanelet::LaneletMapPtr sample_map_ptr_;
@@ -139,18 +134,17 @@ public:
 protected:
   virtual void SetUp()
   {
-    int argc;
-    char** argv;
-    test_obj_.dmn = new DecisionMakerNode(argc, argv);
+    test_obj_.dmn.reset(new DecisionMakerNode);
 
     createLaneletMap();
 
+    ros::init(std::map<std::string, std::string>(), "test_lanelet2_node");
     ros::NodeHandle rosnode;
     map_bin_pub_ = rosnode.advertise<autoware_lanelet2_msgs::MapBin>("lanelet_map_bin", 1, true);
   };
+
   virtual void TearDown()
   {
-    delete test_obj_.dmn;
   };
 };
 

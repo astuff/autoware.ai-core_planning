@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <decision_maker_node.hpp>
+#include "decision_maker/decision_maker_node.h"
 
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "decision_maker");
-  decision_maker::DecisionMakerNode smn(argc, argv);
+  decision_maker::DecisionMakerNode smn;
   smn.run();
 
   return 0;
