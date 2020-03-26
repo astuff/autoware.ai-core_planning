@@ -249,6 +249,7 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
     }
   );  // NOLINT
 
+  // Assign appropriate stop_state type to waypoints that intersect stoplines
   for (auto& lane : lane_array.lanes)
   {
     if (lane.waypoints.empty())
@@ -259,11 +260,13 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
     {
       for (auto& stopline : stoplines)
       {
+        // fetch each stopline's before and after points
         geometry_msgs::Point bp =
             VMPoint2GeoPoint(g_vmap.findByKey(Key<Point>(g_vmap.findByKey(Key<Line>(stopline.lid)).bpid)));
         geometry_msgs::Point fp =
             VMPoint2GeoPoint(g_vmap.findByKey(Key<Point>(g_vmap.findByKey(Key<Line>(stopline.lid)).fpid)));
 
+        // if waypoints intersect with the above points (waypoints that go through the stoplines)
         if (amathutils::isIntersectLine(lane.waypoints.at(wp_idx).pose.pose.position,
                                         lane.waypoints.at(wp_idx + 1).pose.pose.position, bp, fp))
         {
@@ -271,53 +274,54 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
           center_point.x = (bp.x * 2 + fp.x) / 3;
           center_point.y = (bp.y * 2 + fp.y) / 3;
           center_point.z = (bp.z + fp.z) / 2;
-          if (amathutils::isPointLeftFromLine(center_point, lane.waypoints.at(wp_idx).pose.pose.position,
-                                              lane.waypoints.at(wp_idx + 1).pose.pose.position) >= 0)
+
+          // if insert_stop_line_wp param is set to False (default: True)
+          // assigns stop_state to existing waypoints closest to the stopline
+          if (!insert_stop_line_wp_)
           {
-            if (!insert_stop_line_wp_)
+            geometry_msgs::Point intersect_point;
+            if (amathutils::getIntersect(lane.waypoints.at(wp_idx).pose.pose.position,
+                                         lane.waypoints.at(wp_idx + 1).pose.pose.position, bp, fp, &intersect_point))
             {
-              geometry_msgs::Point intersect_point;
-              if (amathutils::getIntersect(lane.waypoints.at(wp_idx).pose.pose.position,
-                                           lane.waypoints.at(wp_idx + 1).pose.pose.position, bp, fp, &intersect_point))
-              {
-                double dist_front =
-                    amathutils::find_distance(intersect_point, lane.waypoints.at(wp_idx + 1).pose.pose.position);
-                double dist_back =
-                    amathutils::find_distance(intersect_point, lane.waypoints.at(wp_idx).pose.pose.position);
-                int target_wp_idx = wp_idx;
-                if (dist_front < dist_back)
-                  target_wp_idx = wp_idx + 1;
-                lane.waypoints.at(target_wp_idx).wpstate.stop_state =
-                    g_vmap.findByKey(Key<RoadSign>(stopline.signid)).type;
-                ROS_INFO("Change waypoint type to stopline: #%d(%f, %f, %f)\n", target_wp_idx,
-                         lane.waypoints.at(target_wp_idx).pose.pose.position.x,
-                         lane.waypoints.at(target_wp_idx).pose.pose.position.y,
-                         lane.waypoints.at(target_wp_idx).pose.pose.position.z);
-              }
+              double dist_front =
+                  amathutils::find_distance(intersect_point, lane.waypoints.at(wp_idx + 1).pose.pose.position);
+              double dist_back =
+                  amathutils::find_distance(intersect_point, lane.waypoints.at(wp_idx).pose.pose.position);
+              int target_wp_idx = wp_idx;
+              if (dist_front < dist_back)
+                target_wp_idx = wp_idx + 1;
+              lane.waypoints.at(target_wp_idx).wpstate.stop_state =
+                  g_vmap.findByKey(Key<RoadSign>(stopline.signid)).type;
+              ROS_INFO("Change waypoint type to stopline: #%d(%f, %f, %f)\n", target_wp_idx,
+                       lane.waypoints.at(target_wp_idx).pose.pose.position.x,
+                       lane.waypoints.at(target_wp_idx).pose.pose.position.y,
+                       lane.waypoints.at(target_wp_idx).pose.pose.position.z);
             }
-            else
-            {
-              center_point.x = (bp.x + fp.x) / 2;
-              center_point.y = (bp.y + fp.y) / 2;
-              geometry_msgs::Point interpolation_point =
-                  amathutils::getNearPtOnLine(center_point, lane.waypoints.at(wp_idx).pose.pose.position,
-                                              lane.waypoints.at(wp_idx + 1).pose.pose.position);
+          }
+          // if insert_stop_line_wp param is set to True (default: True)
+          // inserts a new waypoint more accurately where the waypoints and stopline intersects
+          else
+          {
+            center_point.x = (bp.x + fp.x) / 2;
+            center_point.y = (bp.y + fp.y) / 2;
+            geometry_msgs::Point interpolation_point =
+                amathutils::getNearPtOnLine(center_point, lane.waypoints.at(wp_idx).pose.pose.position,
+                                            lane.waypoints.at(wp_idx + 1).pose.pose.position);
 
-              autoware_msgs::Waypoint wp = lane.waypoints.at(wp_idx);
-              wp.wpstate.stop_state = g_vmap.findByKey(Key<RoadSign>(stopline.signid)).type;
-              wp.pose.pose.position.x = interpolation_point.x;
-              wp.pose.pose.position.y = interpolation_point.y;
-              wp.pose.pose.position.z =
-                  (wp.pose.pose.position.z + lane.waypoints.at(wp_idx + 1).pose.pose.position.z) / 2;
-              wp.twist.twist.linear.x =
-                  (wp.twist.twist.linear.x + lane.waypoints.at(wp_idx + 1).twist.twist.linear.x) / 2;
+            autoware_msgs::Waypoint wp = lane.waypoints.at(wp_idx);
+            wp.wpstate.stop_state = g_vmap.findByKey(Key<RoadSign>(stopline.signid)).type;
+            wp.pose.pose.position.x = interpolation_point.x;
+            wp.pose.pose.position.y = interpolation_point.y;
+            wp.pose.pose.position.z =
+                (wp.pose.pose.position.z + lane.waypoints.at(wp_idx + 1).pose.pose.position.z) / 2;
+            wp.twist.twist.linear.x =
+                (wp.twist.twist.linear.x + lane.waypoints.at(wp_idx + 1).twist.twist.linear.x) / 2;
 
-              ROS_INFO("Inserting stopline_interpolation_wp: #%zu(%f, %f, %f)\n", wp_idx + 1, interpolation_point.x,
-                       interpolation_point.y, interpolation_point.z);
+            ROS_INFO("Inserting stopline_interpolation_wp: #%zu(%f, %f, %f)\n", wp_idx + 1, interpolation_point.x,
+                     interpolation_point.y, interpolation_point.z);
 
-              lane.waypoints.insert(lane.waypoints.begin() + wp_idx + 1, wp);
-              wp_idx++;
-            }
+            lane.waypoints.insert(lane.waypoints.begin() + wp_idx + 1, wp);
+            wp_idx++;
           }
         }
       }
