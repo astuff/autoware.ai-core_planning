@@ -83,12 +83,25 @@ void LaneSelectNode::initForROS()
 
 bool LaneSelectNode::isAllTopicsSubscribed()
 {
-  if (!is_current_pose_subscribed_ || !is_lane_array_subscribed_ || !is_current_velocity_subscribed_)
+  bool ret = true;
+  if (!is_current_pose_subscribed_)
   {
-    ROS_WARN_THROTTLE(1, "Necessary topics are not subscribed yet. Waiting...");
-    return false;
+    ROS_WARN_THROTTLE(1, "Topic current_pose is missing.");
+    ret = false;
   }
-  return true;
+
+  if (!is_lane_array_subscribed_)
+  {
+    ROS_WARN_THROTTLE(1, "Topic traffic_waypoints_array is missing.");
+    ret = false;
+  }
+
+  if (!is_current_velocity_subscribed_)
+  {
+    ROS_WARN_THROTTLE(1, "Topic current_velocity is missing.");
+    ret = false;
+  }
+  return ret;
 }
 
 void LaneSelectNode::resetLaneIdx()
@@ -192,7 +205,7 @@ void LaneSelectNode::createLaneForChange()
   int32_t num_lane_change = getClosestLaneChangeWaypointNumber(cur_lane.waypoints, clst_wp);
   if (num_lane_change < 0 || num_lane_change >= static_cast<int32_t>(cur_lane.waypoints.size()))
   {
-    ROS_WARN_THROTTLE(1, "current lane doesn't have change flag");
+    ROS_DEBUG_THROTTLE(1, "current lane doesn't have change flag");
     return;
   }
 
@@ -201,7 +214,7 @@ void LaneSelectNode::createLaneForChange()
       (static_cast<ChangeFlag>(cur_lane.waypoints.at(num_lane_change).change_flag) == ChangeFlag::left &&
        left_lane_idx_ < 0))
   {
-    ROS_WARN_THROTTLE(1, "current lane doesn't have the lane for lane change");
+    ROS_DEBUG_THROTTLE(1, "current lane doesn't have the lane for lane change");
     return;
   }
 
