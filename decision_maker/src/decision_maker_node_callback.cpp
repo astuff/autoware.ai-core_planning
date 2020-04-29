@@ -85,7 +85,7 @@ void DecisionMakerNode::callbackFromConfig(const autoware_config_msgs::ConfigDec
   goal_threshold_dist_ = msg.goal_threshold_dist;
   goal_threshold_vel_ = msg.goal_threshold_vel;
   stopped_vel_ = msg.stopped_vel;
-  disuse_vector_map_ = msg.disuse_vector_map;
+  ignore_map_ = msg.disuse_vector_map;
   sim_mode_ = msg.sim_mode;
   insert_stop_line_wp_ = msg.insert_stop_line_wp;
 }
@@ -481,13 +481,16 @@ bool DecisionMakerNode::drivingMissionCheck()
   }
 
   // waypoint-state set and insert interpolation waypoint for stopline
-  if (use_lanelet_map_)
+  if (!ignore_map_)
   {
-    setWaypointStateUsingLanelet2Map(current_status_.based_lane_array);
-  }
-  else
-  {
-    setWaypointStateUsingVectorMap(current_status_.based_lane_array);
+    if (use_lanelet_map_)
+    {
+      setWaypointStateUsingLanelet2Map(current_status_.based_lane_array);
+    }
+    else
+    {
+      setWaypointStateUsingVectorMap(current_status_.based_lane_array);
+    }
   }
 
   // reindexing and calculate new closest_waypoint distance
@@ -601,6 +604,7 @@ void DecisionMakerNode::callbackFromLanelet2Map(const autoware_lanelet2_msgs::Ma
       lanelet::traffic_rules::TrafficRulesFactory::create(lanelet::Locations::Germany, lanelet::Participants::Vehicle);
   routing_graph_ = lanelet::routing::RoutingGraph::build(*lanelet_map_, *traffic_rules);
   setEventFlag("lanelet2_map_loaded", true);
+  ROS_INFO("Loaded lanelet2 map");
 }
 
 }  // namespace decision_maker

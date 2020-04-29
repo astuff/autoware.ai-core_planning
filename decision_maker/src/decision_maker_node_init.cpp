@@ -278,7 +278,10 @@ void DecisionMakerNode::createSubscriber(void)
   Subs["stopline_waypoint"] =
     nh_.subscribe("stopline_waypoint", 1, &DecisionMakerNode::callbackFromStoplineWaypoint, this);
   Subs["change_flag"] = nh_.subscribe("change_flag", 1, &DecisionMakerNode::callbackFromLaneChangeFlag, this);
-  Subs["lanelet_map"] = nh_.subscribe("lanelet_map_bin", 1, &DecisionMakerNode::callbackFromLanelet2Map, this);
+  if (!ignore_map_ && use_lanelet_map_)
+  {
+    Subs["lanelet_map"] = nh_.subscribe("lanelet_map_bin", 1, &DecisionMakerNode::callbackFromLanelet2Map, this);
+  }
 }
 void DecisionMakerNode::createPublisher(void)
 {
@@ -311,9 +314,9 @@ void DecisionMakerNode::initROS()
   createSubscriber();
   createPublisher();
 
-  if (disuse_vector_map_)
+  if (ignore_map_)
   {
-    ROS_WARN("Disuse vectormap mode.");
+    ROS_WARN("Ignoring map data");
   }
   else
   {
@@ -339,7 +342,7 @@ void DecisionMakerNode::initLaneletMap(void)
   while (!ll2_map_loaded && ros::ok())
   {
     ros::spinOnce();
-    ROS_INFO_THROTTLE(2, "Subscribing to lanelet map topic");
+    ROS_INFO_THROTTLE(2, "Waiting for lanelet map topic");
     ll2_map_loaded = isEventFlagTrue("lanelet2_map_loaded");
     ros::Duration(0.1).sleep();
   }
