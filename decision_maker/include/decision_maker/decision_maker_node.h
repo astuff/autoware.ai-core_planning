@@ -168,7 +168,7 @@ private:
   bool auto_engage_;
   bool auto_mission_change_;
   bool use_fms_;
-  bool disuse_vector_map_;
+  bool ignore_map_;
   bool insert_stop_line_wp_;
   int param_num_of_steer_behind_;
   int distance_before_lane_change_signal_;

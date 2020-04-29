@@ -148,14 +148,6 @@ protected:
   };
 };
 
-TEST_F(TestSuiteLanelet, initLaneletMap)
-{
-  publishLaneletMap();
-  test_obj_.initLaneletMap();
-
-  ASSERT_TRUE(test_obj_.isEventFlagTrue("lanelet2_map_loaded")) << "Failed to load lanelet map";
-}
-
 TEST_F(TestSuiteLanelet, setWaypointStateUsingLanelet2Map)
 {
   autoware_msgs::LaneArray lane_array;

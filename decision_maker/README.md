@@ -24,7 +24,7 @@ auto_mission_reload|Bool|(default: *false*)<br>If this is set true, decision mak
 auto_engage|Bool|(default: *false*)<br>If this is set true, decision maker automatically engage immediately after ready to drive.
 auto_mission_change|Bool|(default: *false*)<br>If this is set true, decision maker automatically change the mission(waypoint) without state_cmd when new mission is loaded while driving.
 use_fms|Bool|(default: *false*)<br>This must be true in order to incoorporate with [Autoware Management System](https://github.com/CPFL/AMS)
-disuse_vector_map|Bool|(default: *false*)<br> If set *true*, decision_maker will bypass loading a vector map on startup.
+disuse_vector_map|Bool|(default: *false*)<br> If set *true*, decision_maker will not subscribe to map information (vector map or lanelet2 map).
 num_of_steer_behind|Int|(default: *20*)<br> lookup distance along waypoints to determine steering state(straight, turning right, or turning left)
 change_threshold_dist|Double|(default: *1*)<br> This is relevent only if *use_fms* is *true*.<br> If the distance from vehicle to closest waypoint in the new mission is further than *change_threshold_dist* [m], mission change fails.
 change_threshold_angle|Double|(default:*15*)<br>This is relevent only if *use_fms* is *true*.<br> If the angle from vehicle to closest waypoint in the new mission is further than this *change_threshold_dist* [deg], mission change fails.
@@ -35,6 +35,7 @@ goal_threshold_vel|Double|(default: *0.1*)<br> Threshold used to check if vehicl
 ## ROS Parameters
 Parameter|Type|Description
 --|---|--
+ignore_map|Bool|(default: *false*)<br> If set *true*, decision_maker will not subscribe to map information (vector map or lanelet2 map).
 state_vehicle_file_name|string|file that defines vehicle state transition
 state_mission_file_name|string|file that defines mission state transition
 state_behavior_file_name|string|file that defines behavior state transition

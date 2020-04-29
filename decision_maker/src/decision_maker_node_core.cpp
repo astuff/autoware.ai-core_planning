@@ -45,7 +45,7 @@ DecisionMakerNode::DecisionMakerNode()
   auto_engage_(false),
   auto_mission_change_(false),
   use_fms_(false),
-  disuse_vector_map_(false),
+  ignore_map_(false),
   insert_stop_line_wp_(true),
   param_num_of_steer_behind_(30),
   distance_before_lane_change_signal_(30),
@@ -70,7 +70,7 @@ DecisionMakerNode::DecisionMakerNode()
   private_nh_.getParam("auto_engage", auto_engage_);
   private_nh_.getParam("auto_mission_change", auto_mission_change_);
   private_nh_.getParam("use_fms", use_fms_);
-  private_nh_.getParam("disuse_vector_map", disuse_vector_map_);
+  private_nh_.getParam("ignore_map", ignore_map_);
   private_nh_.getParam("param_num_of_steer_behind", param_num_of_steer_behind_);
   private_nh_.getParam("distance_before_lane_change_signal", distance_before_lane_change_signal_);
   private_nh_.getParam("change_threshold_dist", change_threshold_dist_);
