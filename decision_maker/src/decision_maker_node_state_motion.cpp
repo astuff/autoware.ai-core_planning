@@ -1,4 +1,20 @@
-#include <decision_maker_node.hpp>
+// Copyright 2018-2020 Autoware Foundation. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "decision_maker/decision_maker_node.h"
+
+#include <utility>
 
 namespace decision_maker
 {
@@ -135,14 +151,14 @@ void DecisionMakerNode::updateGoState(cstring_t& state_name, int status)
     }
   }
 
-  if (current_status_.ordered_stop_idx != -1 && calcRequiredDistForStop() > getDistToWaypointIdx(current_status_.ordered_stop_idx))
+  if (current_status_.ordered_stop_idx != -1 &&
+      calcRequiredDistForStop() > getDistToWaypointIdx(current_status_.ordered_stop_idx))
   {
     if (current_status_.obstacle_waypoint == -1 || current_status_.ordered_stop_idx <= obstacle_waypoint_gid)
     {
       tryNextState("found_stop_decision");
     }
   }
-
 }
 
 void DecisionMakerNode::updateWaitState(cstring_t& state_name, int status)
@@ -168,9 +184,11 @@ void DecisionMakerNode::updateStopState(cstring_t& state_name, int status)
 
   if (get_stopsign.first != 0 && current_status_.found_stopsign_idx != -1)
   {
-    if (current_status_.ordered_stop_idx == -1 || current_status_.found_stopsign_idx < current_status_.ordered_stop_idx)
+    if (current_status_.ordered_stop_idx == -1 ||
+        current_status_.found_stopsign_idx < current_status_.ordered_stop_idx)
     {
-      switch (get_stopsign.first) {
+      switch (get_stopsign.first)
+      {
         case autoware_msgs::WaypointState::TYPE_STOPLINE:
           tryNextState("found_stopline");
           break;
@@ -180,19 +198,20 @@ void DecisionMakerNode::updateStopState(cstring_t& state_name, int status)
         default:
           break;
       }
+
       return;
     }
   }
 
   if (current_status_.ordered_stop_idx != -1)
   {
-    if (current_status_.found_stopsign_idx == -1 || current_status_.ordered_stop_idx <= current_status_.found_stopsign_idx)
+    if (current_status_.found_stopsign_idx == -1 ||
+        current_status_.ordered_stop_idx <= current_status_.found_stopsign_idx)
     {
       tryNextState("received_stop_order");
       return;
     }
   }
-
 }
 
 void DecisionMakerNode::updateStoplineState(cstring_t& state_name, int status)
@@ -203,21 +222,28 @@ void DecisionMakerNode::updateStoplineState(cstring_t& state_name, int status)
   static bool timerflag = false;
   static ros::Timer stopping_timer;
 
-  if (fabs(current_status_.velocity) <= stopped_vel_ && !timerflag && current_status_.stopline_waypoint != -1 && (current_status_.stopline_waypoint + current_status_.closest_waypoint) == current_status_.found_stopsign_idx)
+  if (fabs(current_status_.velocity) <= stopped_vel_ && !timerflag &&
+      current_status_.stopline_waypoint != -1 &&
+      (current_status_.stopline_waypoint + current_status_.closest_waypoint) == current_status_.found_stopsign_idx)
   {
-    stopping_timer = nh_.createTimer(ros::Duration(0.5),
-                                     [&](const ros::TimerEvent&) {
-                                       timerflag = false;
-                                       current_status_.prev_stopped_wpidx = current_status_.found_stopsign_idx;
-                                       current_status_.found_stopsign_idx = -1;
-                                       if (current_status_.ordered_stop_idx != -1)
-                                        tryNextState("received_stop_order");
-                                      else
-                                        tryNextState("clear");
-                                       /*if found risk,
-                                        * tryNextState("wait");*/
-                                     },
-                                     this, true);
+    stopping_timer = nh_.createTimer(
+      ros::Duration(0.5),
+      [&](const ros::TimerEvent&)
+      {
+        timerflag = false;
+        current_status_.prev_stopped_wpidx = current_status_.found_stopsign_idx;
+        current_status_.found_stopsign_idx = -1;
+
+        if (current_status_.ordered_stop_idx != -1)
+        {
+          tryNextState("received_stop_order");
+        }
+        else
+        {
+          tryNextState("clear");
+        }
+      },  // NOLINT
+      this, true);
     timerflag = true;
   }
 }
@@ -252,4 +278,4 @@ void DecisionMakerNode::exitReservedStopState(cstring_t& state_name, int status)
   current_status_.found_stopsign_idx = -1;
 }
 
-}
+}  // namespace decision_maker

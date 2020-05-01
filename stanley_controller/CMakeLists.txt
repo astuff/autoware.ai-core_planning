@@ -23,7 +23,7 @@ catkin_package(
   amathutils_lib
 )
 
-SET(CMAKE_CXX_FLAGS "-O2 -g -Wall ${CMAKE_CXX_FLAGS}")
+SET(CMAKE_CXX_FLAGS "-O2 -Wall ${CMAKE_CXX_FLAGS}")
 
 include_directories(
   include
@@ -57,11 +57,9 @@ install(
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
 )
 
-set(ROSLINT_CPP_OPTS "--filter=-build/c++14")
-roslint_cpp(src/mpc_trajectory.cpp src/mpc_utils.cpp src/stanley_controller_core.cpp 
-            src/stanley_controller_node.cpp)
+set(ROSLINT_CPP_OPTS "--filter=-build/c++11")
+roslint_cpp()
 
 if(CATKIN_ENABLE_TESTING)
   roslint_add_test()
 endif()
-          

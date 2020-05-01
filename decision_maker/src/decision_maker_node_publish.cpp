@@ -1,4 +1,21 @@
-#include <decision_maker_node.hpp>
+// Copyright 2018-2020 Autoware Foundation. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "decision_maker/decision_maker_node.h"
+
+#include <string>
+#include <vector>
 
 namespace decision_maker
 {
@@ -79,7 +96,6 @@ void DecisionMakerNode::publishOperatorHelpMessage(const cstring_t& message)
 
 void DecisionMakerNode::update_msgs(void)
 {
-#if 1
   if (ctx_vehicle && ctx_mission && ctx_behavior && ctx_motion)
   {
     static std::string text_vehicle_state, text_mission_state, text_behavior_state, text_motion_state;
@@ -117,14 +133,6 @@ void DecisionMakerNode::update_msgs(void)
   {
     std::cerr << "ctx is not found " << std::endl;
   }
-#endif
-}
-
-void DecisionMakerNode::publishLightColor(const int status)
-{
-  autoware_msgs::TrafficLight msg;
-  msg.traffic_light = status;
-  Pubs["light_color"].publish(msg);
 }
 
 void DecisionMakerNode::publishStoplineWaypointIdx(const int wp_idx)
@@ -134,17 +142,4 @@ void DecisionMakerNode::publishStoplineWaypointIdx(const int wp_idx)
   Pubs["state/stopline_wpidx"].publish(msg);
 }
 
-void DecisionMakerNode::publishToVelocityArray()
-{
-  int count = 0;
-  std_msgs::Float64MultiArray msg;
-
-  for (const auto& i : current_status_.finalwaypoints.waypoints)
-  {
-    msg.data.push_back(amathutils::mps2kmph(i.twist.twist.linear.x));
-    if (++count >= 10)
-      break;
-  }
-  Pubs["target_velocity_array"].publish(msg);
-}
-}
+}  // namespace decision_maker

@@ -1,19 +1,36 @@
-#include <cmath>
-#include <stdio.h>
+// Copyright 2018-2020 Autoware Foundation. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-#include <geometry_msgs/PoseStamped.h>
-#include <jsk_recognition_msgs/BoundingBoxArray.h>
-#include <jsk_rviz_plugins/OverlayText.h>
+#include "decision_maker/decision_maker_node.h"
+
+#include <cmath>
+#include <cstdio>
+#include <map>
+#include <string>
+#include <vector>
+
 #include <ros/ros.h>
-#include <std_msgs/String.h>
-#include <std_msgs/UInt8.h>
 
 #include <autoware_msgs/CloudClusterArray.h>
 #include <autoware_msgs/Lane.h>
 #include <autoware_msgs/TrafficLight.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <jsk_recognition_msgs/BoundingBoxArray.h>
+#include <jsk_rviz_plugins/OverlayText.h>
+#include <std_msgs/String.h>
+#include <std_msgs/UInt8.h>
 
-#include <cross_road_area.hpp>
-#include <decision_maker_node.hpp>
 #include <state_machine_lib/state.hpp>
 #include <state_machine_lib/state_context.hpp>
 
@@ -68,7 +85,7 @@ void DecisionMakerNode::callbackFromConfig(const autoware_config_msgs::ConfigDec
   goal_threshold_dist_ = msg.goal_threshold_dist;
   goal_threshold_vel_ = msg.goal_threshold_vel;
   stopped_vel_ = msg.stopped_vel;
-  disuse_vector_map_ = msg.disuse_vector_map;
+  ignore_map_ = msg.disuse_vector_map;
   sim_mode_ = msg.sim_mode;
   insert_stop_line_wp_ = msg.insert_stop_line_wp;
 }
@@ -122,7 +139,7 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
     {
       // To straight/left/right recognition by using angle
       // between first-waypoint and end-waypoint in intersection area.
-      int angle_deg = ((int)std::floor(calcIntersectWayAngle(laneinArea)));  // normalized
+      int angle_deg = (static_cast<int>(std::floor(calcIntersectWayAngle(laneinArea))));  // normalized
       int steering_state;
 
       if (angle_deg <= ANGLE_LEFT)
@@ -159,7 +176,8 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
   }
 
   // Lane Changes - waypoints crossing whitelines
-  const std::vector<WhiteLine> whitelines = g_vmap.findByFilter([](const WhiteLine& whitelines) { return true; });
+  const std::vector<WhiteLine> whitelines = g_vmap.findByFilter(
+    [](const WhiteLine& whitelines) { return true; });  // NOLINT
   for (auto& lane : lane_array.lanes)
   {
     for (size_t wp_idx = 0; wp_idx < lane.waypoints.size() - 1; wp_idx++)
@@ -180,15 +198,16 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
           {
             unsigned int i;
             // turn signal should trigger 30 meters before the lane change
-            for(i = 1; i < wp_idx; i++)
+            for (i = 1; i < wp_idx; i++)
             {
               double dist = amathutils::find_distance(lane.waypoints.at(wp_idx).pose.pose.position,
                                                 lane.waypoints.at(wp_idx-i).pose.pose.position);
-              if(dist >= distance_before_lane_change_signal_)
+              if (dist >= distance_before_lane_change_signal_)
                 break;
             }
+
             int steering_state;
-            if(amathutils::isPointLeftFromLine(lane.waypoints.at(wp_idx).pose.pose.position, bp, fp) > 0)
+            if (amathutils::isPointLeftFromLine(lane.waypoints.at(wp_idx).pose.pose.position, bp, fp) > 0)
             {
               // If waypoint starts from left side of the whiteline, trigger right turn signal
               steering_state = autoware_msgs::WaypointState::STR_RIGHT;
@@ -211,7 +230,8 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
                       lane.waypoints.at(wp_idx + 1).pose.pose.position.z);
 
             // Insert right turn steering_state up to where waypoints crosses the lane
-            for(unsigned int j = 0; j <= i + 1; j++){
+            for (unsigned int j = 0; j <= i + 1; j++)
+            {
               lane.waypoints.at(wp_idx - j + 1).wpstate.steering_state = steering_state;
             }
           }
@@ -220,12 +240,16 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
     }
   }
 
-  // STOP
-  std::vector<StopLine> stoplines = g_vmap.findByFilter([&](const StopLine& stopline) {
-    return ((g_vmap.findByKey(Key<RoadSign>(stopline.signid)).type &
-             (autoware_msgs::WaypointState::TYPE_STOP | autoware_msgs::WaypointState::TYPE_STOPLINE)) != 0);
-  });
+  // Get stoplines associated with stop signs (not traffic lights)
+  std::vector<StopLine> stoplines = g_vmap.findByFilter(
+    [&](const StopLine& stopline)
+    {
+      return ((g_vmap.findByKey(Key<RoadSign>(stopline.signid)).type &
+        (autoware_msgs::WaypointState::TYPE_STOP | autoware_msgs::WaypointState::TYPE_STOPLINE)) != 0);
+    }
+  );  // NOLINT
 
+  // Assign appropriate stop_state type to waypoints that intersect stoplines
   for (auto& lane : lane_array.lanes)
   {
     if (lane.waypoints.empty())
@@ -236,11 +260,13 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
     {
       for (auto& stopline : stoplines)
       {
+        // fetch each stopline's before and after points
         geometry_msgs::Point bp =
             VMPoint2GeoPoint(g_vmap.findByKey(Key<Point>(g_vmap.findByKey(Key<Line>(stopline.lid)).bpid)));
         geometry_msgs::Point fp =
             VMPoint2GeoPoint(g_vmap.findByKey(Key<Point>(g_vmap.findByKey(Key<Line>(stopline.lid)).fpid)));
 
+        // if waypoints intersect with the above points (waypoints that go through the stoplines)
         if (amathutils::isIntersectLine(lane.waypoints.at(wp_idx).pose.pose.position,
                                         lane.waypoints.at(wp_idx + 1).pose.pose.position, bp, fp))
         {
@@ -248,53 +274,54 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
           center_point.x = (bp.x * 2 + fp.x) / 3;
           center_point.y = (bp.y * 2 + fp.y) / 3;
           center_point.z = (bp.z + fp.z) / 2;
-          if (amathutils::isPointLeftFromLine(center_point, lane.waypoints.at(wp_idx).pose.pose.position,
-                                              lane.waypoints.at(wp_idx + 1).pose.pose.position) >= 0)
+
+          // if insert_stop_line_wp param is set to False (default: True)
+          // assigns stop_state to existing waypoints closest to the stopline
+          if (!insert_stop_line_wp_)
           {
-            if (!insert_stop_line_wp_)
+            geometry_msgs::Point intersect_point;
+            if (amathutils::getIntersect(lane.waypoints.at(wp_idx).pose.pose.position,
+                                         lane.waypoints.at(wp_idx + 1).pose.pose.position, bp, fp, &intersect_point))
             {
-              geometry_msgs::Point intersect_point;
-              if (amathutils::getIntersect(lane.waypoints.at(wp_idx).pose.pose.position,
-                                           lane.waypoints.at(wp_idx + 1).pose.pose.position, bp, fp, &intersect_point))
-              {
-                double dist_front =
-                    amathutils::find_distance(intersect_point, lane.waypoints.at(wp_idx + 1).pose.pose.position);
-                double dist_back =
-                    amathutils::find_distance(intersect_point, lane.waypoints.at(wp_idx).pose.pose.position);
-                int target_wp_idx = wp_idx;
-                if (dist_front < dist_back)
-                  target_wp_idx = wp_idx + 1;
-                lane.waypoints.at(target_wp_idx).wpstate.stop_state =
-                    g_vmap.findByKey(Key<RoadSign>(stopline.signid)).type;
-                ROS_INFO("Change waypoint type to stopline: #%zu(%f, %f, %f)\n", target_wp_idx,
-                         lane.waypoints.at(target_wp_idx).pose.pose.position.x,
-                         lane.waypoints.at(target_wp_idx).pose.pose.position.y,
-                         lane.waypoints.at(target_wp_idx).pose.pose.position.z);
-              }
+              double dist_front =
+                  amathutils::find_distance(intersect_point, lane.waypoints.at(wp_idx + 1).pose.pose.position);
+              double dist_back =
+                  amathutils::find_distance(intersect_point, lane.waypoints.at(wp_idx).pose.pose.position);
+              int target_wp_idx = wp_idx;
+              if (dist_front < dist_back)
+                target_wp_idx = wp_idx + 1;
+              lane.waypoints.at(target_wp_idx).wpstate.stop_state =
+                  g_vmap.findByKey(Key<RoadSign>(stopline.signid)).type;
+              ROS_INFO("Change waypoint type to stopline: #%d(%f, %f, %f)\n", target_wp_idx,
+                       lane.waypoints.at(target_wp_idx).pose.pose.position.x,
+                       lane.waypoints.at(target_wp_idx).pose.pose.position.y,
+                       lane.waypoints.at(target_wp_idx).pose.pose.position.z);
             }
-            else
-            {
-              center_point.x = (bp.x + fp.x) / 2;
-              center_point.y = (bp.y + fp.y) / 2;
-              geometry_msgs::Point interpolation_point =
-                  amathutils::getNearPtOnLine(center_point, lane.waypoints.at(wp_idx).pose.pose.position,
-                                              lane.waypoints.at(wp_idx + 1).pose.pose.position);
+          }
+          // if insert_stop_line_wp param is set to True (default: True)
+          // inserts a new waypoint more accurately where the waypoints and stopline intersects
+          else
+          {
+            center_point.x = (bp.x + fp.x) / 2;
+            center_point.y = (bp.y + fp.y) / 2;
+            geometry_msgs::Point interpolation_point =
+                amathutils::getNearPtOnLine(center_point, lane.waypoints.at(wp_idx).pose.pose.position,
+                                            lane.waypoints.at(wp_idx + 1).pose.pose.position);
 
-              autoware_msgs::Waypoint wp = lane.waypoints.at(wp_idx);
-              wp.wpstate.stop_state = g_vmap.findByKey(Key<RoadSign>(stopline.signid)).type;
-              wp.pose.pose.position.x = interpolation_point.x;
-              wp.pose.pose.position.y = interpolation_point.y;
-              wp.pose.pose.position.z =
-                  (wp.pose.pose.position.z + lane.waypoints.at(wp_idx + 1).pose.pose.position.z) / 2;
-              wp.twist.twist.linear.x =
-                  (wp.twist.twist.linear.x + lane.waypoints.at(wp_idx + 1).twist.twist.linear.x) / 2;
+            autoware_msgs::Waypoint wp = lane.waypoints.at(wp_idx);
+            wp.wpstate.stop_state = g_vmap.findByKey(Key<RoadSign>(stopline.signid)).type;
+            wp.pose.pose.position.x = interpolation_point.x;
+            wp.pose.pose.position.y = interpolation_point.y;
+            wp.pose.pose.position.z =
+                (wp.pose.pose.position.z + lane.waypoints.at(wp_idx + 1).pose.pose.position.z) / 2;
+            wp.twist.twist.linear.x =
+                (wp.twist.twist.linear.x + lane.waypoints.at(wp_idx + 1).twist.twist.linear.x) / 2;
 
-              ROS_INFO("Inserting stopline_interpolation_wp: #%zu(%f, %f, %f)\n", wp_idx + 1, interpolation_point.x,
-                       interpolation_point.y, interpolation_point.z);
+            ROS_INFO("Inserting stopline_interpolation_wp: #%zu(%f, %f, %f)\n", wp_idx + 1, interpolation_point.x,
+                     interpolation_point.y, interpolation_point.z);
 
-              lane.waypoints.insert(lane.waypoints.begin() + wp_idx + 1, wp);
-              wp_idx++;
-            }
+            lane.waypoints.insert(lane.waypoints.begin() + wp_idx + 1, wp);
+            wp_idx++;
           }
         }
       }
@@ -347,7 +374,9 @@ void DecisionMakerNode::setWaypointStateUsingLanelet2Map(autoware_msgs::LaneArra
   }
 
   lanelet::ConstLanelets all_lanelets = lanelet::utils::query::laneletLayer(lanelet_map_);
-  lanelet::ConstLineStrings3d stoplines = lanelet::utils::query::stopSignStopLines(all_lanelets, stop_sign_id_);
+
+  // Get stop lines associated with stop signs (not traffic lights)
+  lanelet::ConstLineStrings3d stoplines = lanelet::utils::query::getStopSignStopLines(all_lanelets, stop_sign_id_);
 
   for (auto& lane : lane_array.lanes)
   {
@@ -452,13 +481,16 @@ bool DecisionMakerNode::drivingMissionCheck()
   }
 
   // waypoint-state set and insert interpolation waypoint for stopline
-  if (use_lanelet_map_)
+  if (!ignore_map_)
   {
-    setWaypointStateUsingLanelet2Map(current_status_.based_lane_array);
-  }
-  else
-  {
-    setWaypointStateUsingVectorMap(current_status_.based_lane_array);
+    if (use_lanelet_map_)
+    {
+      setWaypointStateUsingLanelet2Map(current_status_.based_lane_array);
+    }
+    else
+    {
+      setWaypointStateUsingVectorMap(current_status_.based_lane_array);
+    }
   }
 
   // reindexing and calculate new closest_waypoint distance
@@ -572,6 +604,7 @@ void DecisionMakerNode::callbackFromLanelet2Map(const autoware_lanelet2_msgs::Ma
       lanelet::traffic_rules::TrafficRulesFactory::create(lanelet::Locations::Germany, lanelet::Participants::Vehicle);
   routing_graph_ = lanelet::routing::RoutingGraph::build(*lanelet_map_, *traffic_rules);
   setEventFlag("lanelet2_map_loaded", true);
+  ROS_INFO("Loaded lanelet2 map");
 }
 
 }  // namespace decision_maker
