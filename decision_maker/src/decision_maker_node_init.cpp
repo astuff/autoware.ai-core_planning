@@ -359,8 +359,8 @@ void DecisionMakerNode::initVectorMap(void)
     // in DecisionMakerNode constructor
     ROS_INFO("Subscribing to vector map topics.");
 
-    g_vmap.subscribe(nh_, Category::POINT | Category::LINE | Category::VECTOR |
-      Category::AREA | Category::STOP_LINE | Category::ROAD_SIGN | Category::CROSS_ROAD,
+    g_vmap.subscribe(nh_, Category::POINT | Category::LINE | Category::VECTOR | Category::AREA |
+      Category::STOP_LINE | Category::ROAD_SIGN | Category::CROSS_ROAD | Category::WHITE_LINE,
       ros::Duration(1.0));
 
     vmap_loaded =
