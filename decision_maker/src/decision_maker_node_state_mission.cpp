@@ -1,4 +1,18 @@
-#include <decision_maker_node.hpp>
+// Copyright 2018-2020 Autoware Foundation. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "decision_maker/decision_maker_node.h"
 
 namespace decision_maker
 {
@@ -38,7 +52,6 @@ void DecisionMakerNode::exitWaitOrderState(cstring_t& state_name, int status)
 
 void DecisionMakerNode::entryMissionCheckState(cstring_t& state_name, int status)
 {
-
   publishOperatorHelpMessage("Received mission, checking now...");
   setEventFlag("received_back_state_waypoint", false);
 
@@ -51,12 +64,17 @@ void DecisionMakerNode::entryMissionCheckState(cstring_t& state_name, int status
       wp.wpstate.aid = 0;
       wp.wpstate.steering_state = autoware_msgs::WaypointState::NULLSTATE;
       wp.wpstate.accel_state = autoware_msgs::WaypointState::NULLSTATE;
-      if (wp.wpstate.stop_state != autoware_msgs::WaypointState::TYPE_STOPLINE && wp.wpstate.stop_state != autoware_msgs::WaypointState::TYPE_STOP)
+      if (wp.wpstate.stop_state != autoware_msgs::WaypointState::TYPE_STOPLINE &&
+          wp.wpstate.stop_state != autoware_msgs::WaypointState::TYPE_STOP)
+      {
         wp.wpstate.stop_state = autoware_msgs::WaypointState::NULLSTATE;
+      }
+
       wp.wpstate.lanechange_state = autoware_msgs::WaypointState::NULLSTATE;
       wp.wpstate.event_state = 0;
       wp.gid = gid++;
       wp.lid = lid++;
+
       if (!isEventFlagTrue("received_back_state_waypoint") && wp.twist.twist.linear.x < 0.0)
       {
         setEventFlag("received_back_state_waypoint", true);
@@ -66,13 +84,13 @@ void DecisionMakerNode::entryMissionCheckState(cstring_t& state_name, int status
   }
 
   // waypoint-state set and insert interpolation waypoint for stopline
-  if(use_lanelet_map_)
+  if (use_lanelet_map_)
   {
-    setWaypointStateUsingLanelet2Map(current_status_.based_lane_array);        
+    setWaypointStateUsingLanelet2Map(current_status_.based_lane_array);
   }
   else
   {
-    setWaypointStateUsingVectorMap(current_status_.based_lane_array);    
+    setWaypointStateUsingVectorMap(current_status_.based_lane_array);
   }
 
   // indexing
@@ -96,15 +114,19 @@ void DecisionMakerNode::entryMissionCheckState(cstring_t& state_name, int status
   }
   if (!isSubscriberRegistered("stop_order_idx"))
   {
-    Subs["stop_order_idx"] = nh_.subscribe("state/stop_order_wpidx", 1, &DecisionMakerNode::callbackFromStopOrder, this);
+    Subs["stop_order_idx"] =
+      nh_.subscribe("state/stop_order_wpidx", 1, &DecisionMakerNode::callbackFromStopOrder, this);
   }
 }
+
 void DecisionMakerNode::updateMissionCheckState(cstring_t& state_name, int status)
 {
   if (isEventFlagTrue("received_finalwaypoints") && current_status_.closest_waypoint != -1)
   {
     if (current_status_.finalwaypoints.waypoints.size() < 5)
-      publishOperatorHelpMessage("Finalwaypoints is too short.If you wont to Engage,\nplease publish \"mission_is_compatible\" key by \"state_cmd\" topic.");
+      publishOperatorHelpMessage(
+        "Finalwaypoints is too short.If you wont to Engage,\n"
+        "please publish \"mission_is_compatible\" key by \"state_cmd\" topic.");
     else
       tryNextState("mission_is_compatible");
   }
@@ -232,4 +254,4 @@ void DecisionMakerNode::updateMissionCompleteState(cstring_t& state_name, int st
     }
   }
 }
-}
+}  // namespace decision_maker

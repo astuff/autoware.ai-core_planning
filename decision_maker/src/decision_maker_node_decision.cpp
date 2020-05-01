@@ -1,61 +1,37 @@
-#include <stdio.h>
-#include <numeric>
-#include <numeric>
+// Copyright 2018-2020 Autoware Foundation. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-#include <geometry_msgs/PoseStamped.h>
-#include <jsk_rviz_plugins/OverlayText.h>
+#include "decision_maker/decision_maker_node.h"
+
+#include <cstdio>
+#include <numeric>
+#include <vector>
+
 #include <ros/ros.h>
-#include <std_msgs/String.h>
 #include <tf/transform_listener.h>
-
-#include <autoware_msgs/Lane.h>
-#include <autoware_msgs/TrafficLight.h>
-
-#include <cross_road_area.hpp>
-#include <decision_maker_node.hpp>
 #include <state_machine_lib/state.hpp>
 #include <state_machine_lib/state_context.hpp>
 
+#include <autoware_msgs/Lane.h>
+#include <autoware_msgs/TrafficLight.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <jsk_rviz_plugins/OverlayText.h>
+#include <std_msgs/String.h>
+
 namespace decision_maker
 {
-/* do not use this within callback */
-bool DecisionMakerNode::waitForEvent(cstring_t& key, const bool& flag)
-{
-  const uint32_t monitoring_rate = 20;  // Hz
 
-  ros::Rate loop_rate(monitoring_rate);
-  while (ros::ok())
-  {
-    if (isEventFlagTrue(key) == flag)
-    {
-      break;
-    }
-    loop_rate.sleep();
-  }
-  return true;
-}
-
-bool DecisionMakerNode::waitForEvent(cstring_t& key, const bool& flag, const double& timeout_sec)
-{
-  const uint32_t monitoring_rate = 20;  // Hz
-  ros::Rate loop_rate(monitoring_rate);
-
-  ros::Time entry_time = ros::Time::now();
-
-  while (ros::ok())
-  {
-    if (isEventFlagTrue(key) == flag)
-    {
-      return true;
-    }
-    if ((ros::Time::now() - entry_time).toSec() >= timeout_sec)
-    {
-      break;
-    }
-    loop_rate.sleep();
-  }
-  return false;
-}
 double DecisionMakerNode::calcIntersectWayAngle(const autoware_msgs::Lane& laneinArea)
 {
   double diff = 0.0;
@@ -130,7 +106,8 @@ bool DecisionMakerNode::isLocalizationConvergence(const geometry_msgs::Point& _c
   {
     distances.erase(distances.begin());
     distances_count--;
-    double avg_distances = std::accumulate(distances.begin(), distances.end(), 0.0) / (double)distances.size();
+    double avg_distances =
+      std::accumulate(distances.begin(), distances.end(), 0.0) / static_cast<double>(distances.size());
     if (avg_distances <= 2) /*meter*/
     {
       ret = true;
@@ -140,6 +117,7 @@ bool DecisionMakerNode::isLocalizationConvergence(const geometry_msgs::Point& _c
   prev_point = _current_point;
   return ret;
 }
+
 bool DecisionMakerNode::isArrivedGoal() const
 {
   const auto goal_point = current_status_.finalwaypoints.waypoints.back().pose.pose.position;
@@ -152,4 +130,5 @@ bool DecisionMakerNode::isArrivedGoal() const
 
   return false;
 }
-}
+
+}  // namespace decision_maker

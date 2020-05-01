@@ -320,12 +320,12 @@ void MPCUtils::calcPathRelativeTime(const autoware_msgs::Lane& path, std::vector
 }
 
 bool MPCUtils::calcNearestPose(const MPCTrajectory& traj, const geometry_msgs::Pose& self_pose,
-                               geometry_msgs::Pose& nearest_pose, unsigned int& nearest_index, double& min_dist_error,
-                               double& nearest_yaw_error, double& nearest_time)
+                               geometry_msgs::Pose* nearest_pose, unsigned int* nearest_index, double* min_dist_error,
+                               double* nearest_yaw_error, double* nearest_time)
 {
   int nearest_index_tmp = -1;
   double min_dist_squared = std::numeric_limits<double>::max();
-  nearest_yaw_error = std::numeric_limits<double>::max();
+  *nearest_yaw_error = std::numeric_limits<double>::max();
   for (uint32_t i = 0; i < traj.size(); ++i)
   {
     const double dx = self_pose.position.x - traj.x[i];
@@ -340,7 +340,7 @@ bool MPCUtils::calcNearestPose(const MPCTrajectory& traj, const geometry_msgs::P
       {
         /* save nearest index */
         min_dist_squared = dist_squared;
-        nearest_yaw_error = err_yaw;
+        *nearest_yaw_error = err_yaw;
         nearest_index_tmp = i;
       }
     }
@@ -351,19 +351,19 @@ bool MPCUtils::calcNearestPose(const MPCTrajectory& traj, const geometry_msgs::P
     return false;
   }
 
-  nearest_index = nearest_index_tmp;
+  *nearest_index = nearest_index_tmp;
 
-  min_dist_error = std::sqrt(min_dist_squared);
-  nearest_time = traj.relative_time[nearest_index];
-  nearest_pose.position.x = traj.x[nearest_index];
-  nearest_pose.position.y = traj.y[nearest_index];
-  nearest_pose.orientation = amathutils::getQuaternionFromYaw(traj.yaw[nearest_index]);
+  *min_dist_error = std::sqrt(min_dist_squared);
+  *nearest_time = traj.relative_time[*nearest_index];
+  nearest_pose->position.x = traj.x[*nearest_index];
+  nearest_pose->position.y = traj.y[*nearest_index];
+  nearest_pose->orientation = amathutils::getQuaternionFromYaw(traj.yaw[*nearest_index]);
   return true;
 };
 
 bool MPCUtils::calcNearestPoseInterp(const MPCTrajectory& traj, const geometry_msgs::Pose& self_pose,
-                                     geometry_msgs::Pose& nearest_pose, unsigned int& nearest_index,
-                                     double& min_dist_error, double& nearest_yaw_error, double& nearest_time)
+                                     geometry_msgs::Pose* nearest_pose, unsigned int* nearest_index,
+                                     double* min_dist_error, double* nearest_yaw_error, double* nearest_time)
 {
   if (traj.size() == 0)
   {
@@ -400,44 +400,44 @@ bool MPCUtils::calcNearestPoseInterp(const MPCTrajectory& traj, const geometry_m
     return false;
   }
 
-  nearest_index = nearest_index_tmp;
+  *nearest_index = nearest_index_tmp;
 
   if (traj.size() == 1)
   {
-    nearest_pose.position.x = traj.x[nearest_index];
-    nearest_pose.position.y = traj.y[nearest_index];
+    nearest_pose->position.x = traj.x[*nearest_index];
+    nearest_pose->position.y = traj.y[*nearest_index];
     tf2::Quaternion q;
-    q.setRPY(0, 0, traj.yaw[nearest_index]);
-    nearest_pose.orientation = tf2::toMsg(q);
-    nearest_time = traj.relative_time[nearest_index];
-    min_dist_error = std::sqrt(min_dist_squared);
-    nearest_yaw_error = amathutils::normalizeRadian(my_yaw - traj.yaw[nearest_index]);
+    q.setRPY(0, 0, traj.yaw[*nearest_index]);
+    nearest_pose->orientation = tf2::toMsg(q);
+    *nearest_time = traj.relative_time[*nearest_index];
+    *min_dist_error = std::sqrt(min_dist_squared);
+    *nearest_yaw_error = amathutils::normalizeRadian(my_yaw - traj.yaw[*nearest_index]);
     return true;
   }
 
   /* get second nearest index = next to nearest_index */
   int second_nearest_index = 0;
-  if (nearest_index == traj.size() - 1)
+  if (*nearest_index == traj.size() - 1)
   {
-    second_nearest_index = nearest_index - 1;
+    second_nearest_index = *nearest_index - 1;
   }
-  else if (nearest_index == 0)
+  else if (*nearest_index == 0)
   {
     second_nearest_index = 1;
   }
   else
   {
     double dx1, dy1, dist_squared1, dx2, dy2, dist_squared2;
-    dx1 = my_x - traj.x[nearest_index + 1];
-    dy1 = my_y - traj.y[nearest_index + 1];
+    dx1 = my_x - traj.x[*nearest_index + 1];
+    dy1 = my_y - traj.y[*nearest_index + 1];
     dist_squared1 = dx1 * dx1 + dy1 * dy1;
-    dx2 = my_x - traj.x[nearest_index - 1];
-    dy2 = my_y - traj.y[nearest_index - 1];
+    dx2 = my_x - traj.x[*nearest_index - 1];
+    dy2 = my_y - traj.y[*nearest_index - 1];
     dist_squared2 = dx2 * dx2 + dy2 * dy2;
     if (dist_squared1 < dist_squared2)
-      second_nearest_index = nearest_index + 1;
+      second_nearest_index = *nearest_index + 1;
     else
-      second_nearest_index = nearest_index - 1;
+      second_nearest_index = *nearest_index - 1;
   }
 
   const double a_sq = min_dist_squared;
@@ -448,29 +448,29 @@ bool MPCUtils::calcNearestPoseInterp(const MPCTrajectory& traj, const geometry_m
   const double b_sq = dx2 * dx2 + dy2 * dy2;
 
   /* distance between first and second nearest position */
-  const double dx3 = traj.x[nearest_index] - traj.x[second_nearest_index];
-  const double dy3 = traj.y[nearest_index] - traj.y[second_nearest_index];
+  const double dx3 = traj.x[*nearest_index] - traj.x[second_nearest_index];
+  const double dy3 = traj.y[*nearest_index] - traj.y[second_nearest_index];
   const double c_sq = dx3 * dx3 + dy3 * dy3;
 
   /* if distance between two points are too close */
   if (c_sq < 1.0E-5)
   {
-    nearest_pose.position.x = traj.x[nearest_index];
-    nearest_pose.position.y = traj.y[nearest_index];
+    nearest_pose->position.x = traj.x[*nearest_index];
+    nearest_pose->position.y = traj.y[*nearest_index];
     tf2::Quaternion q;
-    q.setRPY(0, 0, traj.yaw[nearest_index]);
-    nearest_pose.orientation = tf2::toMsg(q);
-    nearest_time = traj.relative_time[nearest_index];
-    min_dist_error = std::sqrt(min_dist_squared);
-    nearest_yaw_error = amathutils::normalizeRadian(my_yaw - traj.yaw[nearest_index]);
+    q.setRPY(0, 0, traj.yaw[*nearest_index]);
+    nearest_pose->orientation = tf2::toMsg(q);
+    *nearest_time = traj.relative_time[*nearest_index];
+    *min_dist_error = std::sqrt(min_dist_squared);
+    *nearest_yaw_error = amathutils::normalizeRadian(my_yaw - traj.yaw[*nearest_index]);
     return true;
   }
 
   /* linear interpolation */
   const double alpha = 0.5 * (c_sq - a_sq + b_sq) / c_sq;
-  nearest_pose.position.x = alpha * traj.x[nearest_index] + (1 - alpha) * traj.x[second_nearest_index];
-  nearest_pose.position.y = alpha * traj.y[nearest_index] + (1 - alpha) * traj.y[second_nearest_index];
-  double tmp_yaw_err = traj.yaw[nearest_index] - traj.yaw[second_nearest_index];
+  nearest_pose->position.x = alpha * traj.x[*nearest_index] + (1 - alpha) * traj.x[second_nearest_index];
+  nearest_pose->position.y = alpha * traj.y[*nearest_index] + (1 - alpha) * traj.y[second_nearest_index];
+  double tmp_yaw_err = traj.yaw[*nearest_index] - traj.yaw[second_nearest_index];
   if (tmp_yaw_err > M_PI)
   {
     tmp_yaw_err -= 2.0 * M_PI;
@@ -482,10 +482,10 @@ bool MPCUtils::calcNearestPoseInterp(const MPCTrajectory& traj, const geometry_m
   const double nearest_yaw = traj.yaw[second_nearest_index] + alpha * tmp_yaw_err;
   tf2::Quaternion q;
   q.setRPY(0, 0, nearest_yaw);
-  nearest_pose.orientation = tf2::toMsg(q);
-  nearest_time = alpha * traj.relative_time[nearest_index] + (1 - alpha) * traj.relative_time[second_nearest_index];
-  min_dist_error = std::sqrt(b_sq - c_sq * alpha * alpha);
-  nearest_yaw_error = amathutils::normalizeRadian(my_yaw - nearest_yaw);
+  nearest_pose->orientation = tf2::toMsg(q);
+  *nearest_time = alpha * traj.relative_time[*nearest_index] + (1 - alpha) * traj.relative_time[second_nearest_index];
+  *min_dist_error = std::sqrt(b_sq - c_sq * alpha * alpha);
+  *nearest_yaw_error = amathutils::normalizeRadian(my_yaw - nearest_yaw);
   return true;
 };
 

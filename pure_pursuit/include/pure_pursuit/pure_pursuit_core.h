@@ -35,6 +35,7 @@
 
 #include <vector>
 #include <memory>
+#include <string>
 
 namespace waypoint_follower
 {
@@ -78,12 +79,11 @@ private:
   // subscriber
   ros::Subscriber sub1_, sub2_, sub3_, sub4_;
 
-  // constant
-  const int LOOP_RATE_;  // processing frequency
+  // control loop update rate
+  double update_rate_;
 
   // variables
-  bool is_linear_interpolation_, publishes_for_steering_robot_,
-    add_virtual_end_waypoints_;
+  bool is_linear_interpolation_, add_virtual_end_waypoints_;
   bool is_waypoint_set_, is_pose_set_, is_velocity_set_;
   double current_linear_velocity_, command_linear_velocity_;
   double wheel_base_;
@@ -95,6 +95,7 @@ private:
   double lookahead_distance_ratio_;
   // the next waypoint must be outside of this threshold.
   double minimum_lookahead_distance_;
+  std::string output_interface_;
 
   // callbacks
   void callbackFromConfig(
@@ -108,9 +109,10 @@ private:
   void initForROS();
 
   // functions
+  void publishControlCommands(const bool& can_get_curvature, const double& kappa) const;
   void publishTwistStamped(
     const bool& can_get_curvature, const double& kappa) const;
-  void publishControlCommandStamped(
+  void publishCtrlCmdStamped(
     const bool& can_get_curvature, const double& kappa) const;
   void publishDeviationCurrentPosition(
     const geometry_msgs::Point& point,

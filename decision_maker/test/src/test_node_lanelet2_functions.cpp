@@ -1,18 +1,19 @@
-/*
- * Copyright 2018-2019 Autoware Foundation. All rights reserved.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Copyright 2018-2020 Autoware Foundation. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "test_class.h"  // NOLINT
+#include "decision_maker/decision_maker_node.h"
 
 #include <gtest/gtest.h>
 #include <ros/ros.h>
@@ -25,10 +26,8 @@
 #include <lanelet2_core/primitives/BasicRegulatoryElements.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 
+#include <map>
 #include <string>
-
-#include "decision_maker_node.hpp"
-#include "test_class.hpp"
 
 using lanelet::Lanelet;
 using lanelet::LineString3d;
@@ -39,16 +38,10 @@ using lanelet::utils::getId;
 
 namespace decision_maker
 {
-class TestSuiteLanelet : public ::testing::Test
+class TestSuiteLanelet
+  : public ::testing::Test
 {
 public:
-  TestSuiteLanelet()
-  {
-  }
-  ~TestSuiteLanelet()
-  {
-  }
-
   TestClass test_obj_;
 
   lanelet::LaneletMapPtr sample_map_ptr_;
@@ -141,28 +134,19 @@ public:
 protected:
   virtual void SetUp()
   {
-    int argc;
-    char** argv;
-    test_obj_.dmn = new DecisionMakerNode(argc, argv);
+    test_obj_.dmn.reset(new DecisionMakerNode);
 
     createLaneletMap();
 
+    ros::init(std::map<std::string, std::string>(), "test_lanelet2_node");
     ros::NodeHandle rosnode;
     map_bin_pub_ = rosnode.advertise<autoware_lanelet2_msgs::MapBin>("lanelet_map_bin", 1, true);
   };
+
   virtual void TearDown()
   {
-    delete test_obj_.dmn;
   };
 };
-
-TEST_F(TestSuiteLanelet, initLaneletMap)
-{
-  publishLaneletMap();
-  test_obj_.initLaneletMap();
-
-  ASSERT_TRUE(test_obj_.isEventFlagTrue("lanelet2_map_loaded")) << "Failed to load lanelet map";
-}
 
 TEST_F(TestSuiteLanelet, setWaypointStateUsingLanelet2Map)
 {
