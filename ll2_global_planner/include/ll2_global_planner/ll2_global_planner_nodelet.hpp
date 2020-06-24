@@ -14,6 +14,7 @@
 #include <pluginlib/class_list_macros.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/buffer.h>
+#include <lanelet2_core/LaneletMap.h>
 
 #include <autoware_lanelet2_msgs/MapBin.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -31,11 +32,13 @@ class Ll2GlobalPlannerNl : public nodelet::Nodelet {
     void loadParams();
 
     // Subscriber callbacks
-    void laneletMapCb(const autoware_lanelet2_msgs::MapBin::ConstPtr& map_msg);
+    void laneletMapCb(const autoware_lanelet2_msgs::MapBin& map_msg);
     void poseGoalCb(const geometry_msgs::PoseStamped::ConstPtr& pose_msg);
 
     // Util functions
+    lanelet::Lanelet getNearestLanelet(lanelet::BasicPoint2d);
 
+    // void planRoute()
 
     // Nodehandles, both public and private
     ros::NodeHandle nh, pnh;
@@ -51,6 +54,7 @@ class Ll2GlobalPlannerNl : public nodelet::Nodelet {
 
     // Internal state
     bool initialized = false;
+    lanelet::LaneletMapPtr lanelet_map;
 
     // Parameters
 };

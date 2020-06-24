@@ -4,7 +4,7 @@ project(ll2_global_planner)
 ## c++11 feature
 set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wextra ${CMAKE_CXX_FLAGS}")
 
-set(catkin_deps roscpp roslib nodelet tf2 tf2_ros autoware_lanelet2_msgs autoware_msgs geometry_msgs roslint)
+set(catkin_deps roscpp roslib nodelet tf2 tf2_ros lanelet2_extension autoware_lanelet2_msgs autoware_msgs geometry_msgs roslint)
 find_package(catkin REQUIRED ${catkin_deps})
 
 catkin_package(
@@ -49,18 +49,18 @@ target_link_libraries(${PROJECT_NAME}_node
 ## TEST ##
 ##########
 
-if (CATKIN_ENABLE_TESTING)
-    find_package(rostest REQUIRED)
-
-    # ROS tests
-    add_rostest_gtest(test_${PROJECT_NAME}_node
-        test/rostest_launch.test
-        test/rostest_integration_test.cpp
-    )
-    target_link_libraries(test_${PROJECT_NAME}_node
-        ${catkin_LIBRARIES}
-    )
-endif(CATKIN_ENABLE_TESTING)
+# if (CATKIN_ENABLE_TESTING)
+#     find_package(rostest REQUIRED)
+#
+#     # ROS tests
+#     add_rostest_gtest(test_${PROJECT_NAME}_node
+#         test/rostest_launch.test
+#         test/rostest_integration_test.cpp
+#     )
+#     target_link_libraries(test_${PROJECT_NAME}_node
+#         ${catkin_LIBRARIES}
+#     )
+# endif(CATKIN_ENABLE_TESTING)
 
 #############
 ## Install ##

@@ -18,7 +18,7 @@ This topic is used to receive a waypoint from RViz.
 
 #### Pubs
 
-- `lane_waypoints_array` (auto
+- `lane_waypoints_array` (autoware_msgs/LaneArray)
 The waypoints that make up the planned route.
 
 #### Transform Listeners

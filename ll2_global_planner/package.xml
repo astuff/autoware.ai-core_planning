@@ -17,6 +17,7 @@
   <depend>autoware_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>roslint</depend>
+  <depend>lanelet2_extension</depend>
 
   <export>
     <nodelet plugin="${prefix}/nodelets.xml"/>

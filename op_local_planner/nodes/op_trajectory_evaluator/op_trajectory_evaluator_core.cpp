@@ -49,11 +49,17 @@ TrajectoryEval::TrajectoryEval()
 	int bVelSource = 1;
 	_nh.getParam("/op_trajectory_evaluator/velocitySource", bVelSource);
 	if(bVelSource == 0)
+	{
 		sub_robot_odom = nh.subscribe("/odom", 10, &TrajectoryEval::callbackGetRobotOdom, this);
+	}
 	else if(bVelSource == 1)
+	{
 		sub_current_velocity = nh.subscribe("/current_velocity", 10, &TrajectoryEval::callbackGetVehicleStatus, this);
+	}
 	else if(bVelSource == 2)
+	{
 		sub_can_info = nh.subscribe("/can_info", 10, &TrajectoryEval::callbackGetCANInfo, this);
+	}
 
 	sub_GlobalPlannerPaths = nh.subscribe("/lane_waypoints_array", 1, &TrajectoryEval::callbackGetGlobalPlannerPath, this);
 	sub_LocalPlannerPaths = nh.subscribe("/local_trajectories", 1, &TrajectoryEval::callbackGetLocalPlannerPath, this);
@@ -155,10 +161,9 @@ void TrajectoryEval::callbackGetGlobalPlannerPath(const autoware_msgs::LaneArray
 {
 	if(msg->lanes.size() > 0)
 	{
-
 		bool bOldGlobalPath = m_GlobalPaths.size() == msg->lanes.size();
-
 		m_GlobalPaths.clear();
+		std::vector<PlannerHNS::WayPoint> m_temp_path;
 
 		for(unsigned int i = 0 ; i < msg->lanes.size(); i++)
 		{
@@ -192,6 +197,7 @@ void TrajectoryEval::callbackGetLocalPlannerPath(const autoware_msgs::LaneArrayC
 		m_GeneratedRollOuts.clear();
 		int globalPathId_roll_outs = -1;
 
+		// Loop over each trajectory
 		for(unsigned int i = 0 ; i < msg->lanes.size(); i++)
 		{
 			std::vector<PlannerHNS::WayPoint> path;
@@ -212,6 +218,8 @@ void TrajectoryEval::callbackGetLocalPlannerPath(const autoware_msgs::LaneArrayC
 				m_GlobalPathsToUse = m_GlobalPaths;
 				std::cout << "Synchronization At Trajectory Evaluator: GlobalID: " <<  globalPathId << ", LocalID: " << globalPathId_roll_outs << std::endl;
 			}
+			bWayGlobalPath = false;
+			m_GlobalPathsToUse = m_GlobalPaths;
 		}
 
 		bRollOuts = true;
@@ -281,6 +289,7 @@ void TrajectoryEval::MainLoop()
 				pub_TrajectoryCost.publish(l);
 			}
 
+			ROS_WARN("gen paths: %d, %d, %d", m_TrajectoryCostsCalculator.m_TrajectoryCosts.size(), m_GeneratedRollOuts.size(), m_GlobalPathsToUse.size());
 			if(m_TrajectoryCostsCalculator.m_TrajectoryCosts.size() == m_GeneratedRollOuts.size())
 			{
 				autoware_msgs::LaneArray local_lanes;

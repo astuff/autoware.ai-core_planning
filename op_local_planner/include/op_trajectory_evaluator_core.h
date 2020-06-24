@@ -50,7 +50,6 @@ protected:
 	PlannerHNS::VehicleState m_VehicleStatus;
 	bool bVehicleStatus;
 
-	std::vector<PlannerHNS::WayPoint> m_temp_path;
 	std::vector<std::vector<PlannerHNS::WayPoint> > m_GlobalPaths;
 	std::vector<std::vector<PlannerHNS::WayPoint> > m_GlobalPathsToUse;
 	std::vector<std::vector<PlannerHNS::WayPoint> > m_GlobalPathSections;
