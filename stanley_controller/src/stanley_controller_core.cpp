@@ -1,4 +1,9 @@
 /*
+ * Copyright 2020 AutonomouStuff, LLC. All Rights Reserved.
+ * 
+ * For license details, see:
+ * https://autonomoustuff.com/software-license-agreement/
+ * 
  * Copyright 2018-2019 Autoware Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
