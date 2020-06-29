@@ -18,38 +18,38 @@
 #include <ros/connection_manager.h>
 #include <ros/ros.h>
 
-#include "lane_select_core.h"
+#include "lane_select/lane_select_core.h"
 
-namespace lane_planner {
-
-class LaneSelectTestClass {
+namespace lane_planner
+{
+class LaneSelectTestClass
+{
 public:
-  LaneSelectTestClass() {}
+  LaneSelectTestClass() = default;
 
-  LaneSelectNode *lsn;
+  LaneSelectNode* lsn;
   autoware_msgs::VehicleLocation cb_vehicle_location;
 
   ros::NodeHandle nh;
-  ros::Publisher traffic_waypoints_array_pub =
-      nh.advertise<autoware_msgs::LaneArray>("/traffic_waypoints_array", 0);
-  ros::Publisher current_pose_pub =
-      nh.advertise<geometry_msgs::PoseStamped>("/current_pose", 0);
-  ros::Publisher current_velocity_pub =
-      nh.advertise<geometry_msgs::TwistStamped>("/current_velocity", 0);
+  ros::Publisher traffic_waypoints_array_pub = nh.advertise<autoware_msgs::LaneArray>("/traffic_waypoints_array", 0);
+  ros::Publisher current_pose_pub = nh.advertise<geometry_msgs::PoseStamped>("/current_pose", 0);
+  ros::Publisher current_velocity_pub = nh.advertise<geometry_msgs::TwistStamped>("/current_velocity", 0);
   ros::Subscriber vehicle_location_sub =
-      nh.subscribe("/vehicle_location", 1,
-                   &LaneSelectTestClass::vehicleLocationCallback, this);
+      nh.subscribe("/vehicle_location", 1, &LaneSelectTestClass::vehicleLocationCallback, this);
 
   int32_t lane_array_id_ = 6587651;
 
-  void accessPublishVehicleLocation(int32_t clst_wp, int32_t larray_id) {
+  void accessPublishVehicleLocation(int32_t clst_wp, int32_t larray_id)
+  {
     lsn->publishVehicleLocation(clst_wp, larray_id);
   }
 
-  void publishTrafficWaypointsArray(int driving_direction) {
+  void publishTrafficWaypointsArray(int driving_direction)
+  {
     autoware_msgs::LaneArray pub_msg;
     autoware_msgs::Lane pub_lane;
-    for (int idx = 0; idx < 100; idx++) {
+    for (int idx = 0; idx < 100; idx++)
+    {
       static autoware_msgs::Waypoint wp;
       wp.gid = idx;
       wp.lid = idx;
@@ -70,7 +70,8 @@ public:
     traffic_waypoints_array_pub.publish(pub_msg);
   }
 
-  void publishCurrentPose(double x, double y, double yaw) {
+  void publishCurrentPose(double x, double y, double yaw)
+  {
     geometry_msgs::PoseStamped pose;
     pose.pose.position.x = x;
     pose.pose.position.y = y;
@@ -79,21 +80,24 @@ public:
     current_pose_pub.publish(pose);
   }
 
-  void publishCurrentVelocity(double vel) {
+  void publishCurrentVelocity(double vel)
+  {
     geometry_msgs::TwistStamped twist;
     twist.twist.linear.x = vel;
     current_velocity_pub.publish(twist);
   }
 
-  void
-  vehicleLocationCallback(const autoware_msgs::VehicleLocationConstPtr &msg) {
+  void vehicleLocationCallback(const autoware_msgs::VehicleLocationConstPtr& msg)
+  {
     cb_vehicle_location = *msg;
-    std::cout << "vehicleLocationCallback: "
-              << cb_vehicle_location.waypoint_index << ", "
+    std::cout << "vehicleLocationCallback: " << cb_vehicle_location.waypoint_index << ", "
               << cb_vehicle_location.lane_array_id << std::endl;
   }
 
-  void lsnSpinOnce() { lsn->spinOnce(); }
+  void lsnSpinOnce()
+  {
+    lsn->spinOnce();
+  }
 };
 
-} // namespace lane_planner
+}  // namespace lane_planner
