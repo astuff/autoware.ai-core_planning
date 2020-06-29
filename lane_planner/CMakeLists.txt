@@ -6,10 +6,10 @@ find_package(autoware_build_flags REQUIRED)
 find_package(catkin REQUIRED COMPONENTS
   autoware_config_msgs
   autoware_msgs
-  autoware_msgs
   gnss
   libwaypoint_follower
   roscpp
+  roslint
   rostest
   rosunit
   std_msgs
@@ -148,6 +148,11 @@ install(
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
 )
 
+set(ROSLINT_CPP_OPTS "--filter=-build/c++11")
+roslint_cpp(nodes/lane_select/hermite_curve.cpp 
+            nodes/lane_select/lane_select_core.cpp
+            nodes/lane_select/lane_select_node.cpp)
+
 if (CATKIN_ENABLE_TESTING)
     find_package(rostest REQUIRED)
     add_rostest_gtest(test-lane_select
@@ -159,4 +164,6 @@ if (CATKIN_ENABLE_TESTING)
     add_dependencies(test-lane_select ${catkin_EXPORTED_TARGETS})
     target_link_libraries(test-lane_select
     ${catkin_LIBRARIES})
+
+    roslint_add_test()
 endif ()

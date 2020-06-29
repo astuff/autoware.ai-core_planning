@@ -80,7 +80,8 @@ private:
   ros::Subscriber sub1_, sub5_, sub6_;
   message_filters::Subscriber<geometry_msgs::PoseStamped> sub2_;
   message_filters::Subscriber<geometry_msgs::TwistStamped> sub3_;
-  using PoseTwistSyncPolicy = message_filters::sync_policies::ApproximateTime<geometry_msgs::PoseStamped, geometry_msgs::TwistStamped>;
+  using PoseTwistSyncPolicy =
+      message_filters::sync_policies::ApproximateTime<geometry_msgs::PoseStamped, geometry_msgs::TwistStamped>;
   using PoseTwistSync = message_filters::Synchronizer<PoseTwistSyncPolicy>;
   std::shared_ptr<PoseTwistSync> pose_twist_sync_;
 

@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-#include "hermite_curve.h"
+#include <vector>
+
+#include "lane_select/hermite_curve.h"
 
 namespace lane_planner
 {
-void createVectorFromPose(const geometry_msgs::Pose &p, tf::Vector3 *v)
+void createVectorFromPose(const geometry_msgs::Pose& p, tf::Vector3* v)
 {
   tf::Transform pose;
   tf::poseMsgToTF(p, pose);
@@ -26,7 +28,7 @@ void createVectorFromPose(const geometry_msgs::Pose &p, tf::Vector3 *v)
   *v = pose.getBasis() * x_axis;
 }
 
-void getPointAndVectorFromPose(const geometry_msgs::Pose &pose, Element2D *point, Element2D *vector)
+void getPointAndVectorFromPose(const geometry_msgs::Pose& pose, Element2D* point, Element2D* vector)
 {
   point->set(pose.position.x, pose.position.y);
 
@@ -35,8 +37,8 @@ void getPointAndVectorFromPose(const geometry_msgs::Pose &pose, Element2D *point
   vector->set(tmp_tf_vevtor.getX(), tmp_tf_vevtor.getY());
 }
 
-std::vector<autoware_msgs::Waypoint> generateHermiteCurveForROS(const geometry_msgs::Pose &start,
-                                                                const geometry_msgs::Pose &end,
+std::vector<autoware_msgs::Waypoint> generateHermiteCurveForROS(const geometry_msgs::Pose& start,
+                                                                const geometry_msgs::Pose& end,
                                                                 const double velocity_mps, const double vlength)
 {
   std::vector<autoware_msgs::Waypoint> wps;
@@ -45,23 +47,18 @@ std::vector<autoware_msgs::Waypoint> generateHermiteCurveForROS(const geometry_m
   getPointAndVectorFromPose(end, &p1, &v1);
 
   std::vector<Element2D> result = generateHermiteCurve(p0, v0, p1, v1, vlength);
+  size_t len = result.size();
 
-  double height_d = fabs(start.position.z - end.position.z);
-  for (uint32_t i = 0; i < result.size(); i++)
+  for (size_t i = 0; i < len; i++)
   {
     autoware_msgs::Waypoint wp;
+    wp.twist.twist.linear.x = velocity_mps;
     wp.pose.pose.position.x = result.at(i).x;
     wp.pose.pose.position.y = result.at(i).y;
-    wp.twist.twist.linear.x = velocity_mps;
-
-    // height
-    wp.pose.pose.position.z =
-        (i == 0) ? start.position.z : (i == result.size() - 1) ? end.position.z : start.position.z < end.position.z ?
-                                                                 start.position.z + height_d * i / result.size() :
-                                                                 start.position.z - height_d * i / result.size();
+    wp.pose.pose.position.z = start.position.z + (end.position.z - start.position.z) * i / (len - 1);
 
     // orientation
-    if (i != result.size() - 1)
+    if (i != len - 1)
     {
       double radian = atan2(result.at(i + 1).y - result.at(i).y, result.at(i + 1).x - result.at(i).x);
       wp.pose.pose.orientation = tf::createQuaternionMsgFromYaw(radian);
@@ -76,8 +73,8 @@ std::vector<autoware_msgs::Waypoint> generateHermiteCurveForROS(const geometry_m
   return wps;
 }
 
-std::vector<Element2D> generateHermiteCurve(const Element2D &p0, const Element2D &v0, const Element2D &p1,
-                                            const Element2D &v1, const double vlength)
+std::vector<Element2D> generateHermiteCurve(const Element2D& p0, const Element2D& v0, const Element2D& p1,
+                                            const Element2D& v1, const double vlength)
 {
   std::vector<Element2D> result;
   const double interval = 1.0;
@@ -116,4 +113,4 @@ std::vector<Element2D> generateHermiteCurve(const Element2D &p0, const Element2D
   }
   return result;
 }
-}  // namespace
+}  // namespace lane_planner
