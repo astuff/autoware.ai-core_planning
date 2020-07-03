@@ -77,6 +77,7 @@ void Ll2GlobalPlannerNl::poseGoalCb(const geometry_msgs::PoseStamped::ConstPtr& 
 
   // Find the nearest lanelet to the goal point
   BasicPoint2d local_point(pose_msg->pose.position.x, pose_msg->pose.position.y);
+  geometry_msgs::Point goal_point(pose_msg->pose.position);
 
   Lanelet goal_lanelet = getNearestLanelet(local_point);
 
@@ -101,12 +102,8 @@ void Ll2GlobalPlannerNl::poseGoalCb(const geometry_msgs::PoseStamped::ConstPtr& 
 
   // Plan a route from current vehicle position
   traffic_rules::TrafficRulesPtr traffic_rules{traffic_rules::TrafficRulesFactory::instance().create(Locations::Germany, Participants::Vehicle)};
-
-  // routing::RoutingGraphPtr graph = std::make_shared<routing::RoutingGraph>(this->lanelet_map, trafficRules);
   routing::RoutingGraphUPtr graph = routing::RoutingGraph::build(*this->lanelet_map, *traffic_rules);
-
   Optional<routing::LaneletPath> shortest_path_opt = graph->shortestPath(starting_lanelet, goal_lanelet);
-
   routing::LaneletPath shortest_path;
 
   if (!shortest_path_opt)
@@ -127,21 +124,20 @@ void Ll2GlobalPlannerNl::poseGoalCb(const geometry_msgs::PoseStamped::ConstPtr& 
   ROS_INFO("Found a path containing %d lanelets", shortest_path.size());
 
   // Convert to autoware waypoints
-  autoware_msgs::Lane lane_msg;
+  std::vector<autoware_msgs::Waypoint> waypoints;
   BasicPoint3d prev_point;
   int wp_id = 0;
   bool first_point = true;
+  float smallest_goal_dist = std::numeric_limits<float>::infinity();
+  int smallest_goal_wp_id = 0;
 
   // Loop over each lanelet
   for (auto lanelet : continuous_lane.lanelets())
   {
     std::string turn_direction = lanelet.attributeOr("turn_direction", "straight");
-    // CompoundLineString3d centerline = lanelet.centerline();
+    traffic_rules::SpeedLimitInformation speed_limit = traffic_rules->speedLimit(lanelet);
     ConstLineString3d centerline = lanelet.centerline();
     int wp_length = centerline.size() - 1;
-
-
-    traffic_rules::SpeedLimitInformation speed_limit = traffic_rules->speedLimit(lanelet);
 
     // Loop over each centerline point
     for (int i = 0; i <= wp_length; i++)
@@ -154,7 +150,6 @@ void Ll2GlobalPlannerNl::poseGoalCb(const geometry_msgs::PoseStamped::ConstPtr& 
         float dist = std::hypot(std::hypot(point.x() - prev_point.x(), point.y() - prev_point.y()), point.z() - prev_point.z());
         if (dist < 0.001)
         {
-          ROS_INFO("FOUND DUPE");
           continue;
         }
       }
@@ -167,14 +162,12 @@ void Ll2GlobalPlannerNl::poseGoalCb(const geometry_msgs::PoseStamped::ConstPtr& 
       new_wp.pose.pose.position.x = point.x();
       new_wp.pose.pose.position.y = point.y();
       new_wp.pose.pose.position.z = point.z();
-
-      // TODO: Assign this speed based on speed limit of the road
       new_wp.twist.twist.linear.x = speed_limit.speedLimit.value(); // m/s
 
       // Set orientation of the point, aiming at next point
       if (i == wp_length)
       {
-        new_wp.pose.pose.orientation = lane_msg.waypoints.back().pose.pose.orientation;
+        new_wp.pose.pose.orientation = waypoints.back().pose.pose.orientation;
       }
       else
       {
@@ -198,12 +191,22 @@ void Ll2GlobalPlannerNl::poseGoalCb(const geometry_msgs::PoseStamped::ConstPtr& 
       new_wp.wpstate.steering_state = steering_state;
       new_wp.gid = new_wp.lid = wp_id;
 
-      lane_msg.waypoints.push_back(new_wp);
-      wp_id++;
+      // Calculate distance to goal
+      float goal_dist = std::hypot(std::hypot(goal_point.x - point.x(), goal_point.y - point.y()), goal_point.z - point.z());
+      if (goal_dist < smallest_goal_dist)
+      {
+        smallest_goal_dist = goal_dist;
+        smallest_goal_wp_id = wp_id;
+      }
 
+      waypoints.push_back(new_wp);
+      wp_id++;
       prev_point = point;
     }
   }
+
+  autoware_msgs::Lane lane_msg;
+  lane_msg.waypoints = std::vector<autoware_msgs::Waypoint>(waypoints.begin(), waypoints.begin() + smallest_goal_wp_id);
 
   lane_msg.header.stamp = ros::Time(0);
   lane_msg.header.frame_id = "map";
@@ -211,10 +214,8 @@ void Ll2GlobalPlannerNl::poseGoalCb(const geometry_msgs::PoseStamped::ConstPtr& 
 
   autoware_msgs::LaneArray lane_array_msg;
   lane_array_msg.lanes.push_back(lane_msg);
-
   this->waypoints_pub.publish(lane_array_msg);
 }
-
 
 Lanelet Ll2GlobalPlannerNl::getNearestLanelet(lanelet::BasicPoint2d point)
 {
