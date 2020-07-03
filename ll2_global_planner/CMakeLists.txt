@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(ll2_global_planner)
 
 ## c++11 feature
-set(CMAKE_CXX_FLAGS "-std=c++11 -Wall -Wextra ${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "-std=c++14 -Wall -Wextra ${CMAKE_CXX_FLAGS}")
 
 set(catkin_deps roscpp roslib nodelet tf2 tf2_ros lanelet2_extension autoware_lanelet2_msgs autoware_msgs geometry_msgs roslint)
 find_package(catkin REQUIRED ${catkin_deps})

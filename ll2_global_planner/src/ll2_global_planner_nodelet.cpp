@@ -38,7 +38,7 @@ void Ll2GlobalPlannerNl::onInit()
   this->loadParams();
 
   // Publishers
-  this->waypoints_pub = nh.advertise<autoware_msgs::LaneArray>("based/lane_waypoints_array", 1, true);
+  this->waypoints_pub = nh.advertise<autoware_msgs::LaneArray>("based/lane_waypoints_raw", 1, true);
 
   // Subscribers
   this->lanelet_sub = nh.subscribe("lanelet_map_bin", 1, &Ll2GlobalPlannerNl::laneletMapCb, this);
@@ -78,7 +78,6 @@ void Ll2GlobalPlannerNl::poseGoalCb(const geometry_msgs::PoseStamped::ConstPtr& 
   // Find the nearest lanelet to the goal point
   BasicPoint2d local_point(pose_msg->pose.position.x, pose_msg->pose.position.y);
 
-
   Lanelet goal_lanelet = getNearestLanelet(local_point);
 
   // ROS_WARN("LANE ID: %d", nearest_lanelet.id());
@@ -101,10 +100,10 @@ void Ll2GlobalPlannerNl::poseGoalCb(const geometry_msgs::PoseStamped::ConstPtr& 
   Lanelet starting_lanelet = getNearestLanelet(starting_point);
 
   // Plan a route from current vehicle position
-  traffic_rules::TrafficRulesPtr trafficRules{traffic_rules::TrafficRulesFactory::instance().create(Locations::Germany, Participants::Vehicle)};
+  traffic_rules::TrafficRulesPtr traffic_rules{traffic_rules::TrafficRulesFactory::instance().create(Locations::Germany, Participants::Vehicle)};
 
   // routing::RoutingGraphPtr graph = std::make_shared<routing::RoutingGraph>(this->lanelet_map, trafficRules);
-  routing::RoutingGraphUPtr graph = routing::RoutingGraph::build(*this->lanelet_map, *trafficRules);
+  routing::RoutingGraphUPtr graph = routing::RoutingGraph::build(*this->lanelet_map, *traffic_rules);
 
   Optional<routing::LaneletPath> shortest_path_opt = graph->shortestPath(starting_lanelet, goal_lanelet);
 
@@ -127,40 +126,83 @@ void Ll2GlobalPlannerNl::poseGoalCb(const geometry_msgs::PoseStamped::ConstPtr& 
 
   ROS_INFO("Found a path containing %d lanelets", shortest_path.size());
 
-
   // Convert to autoware waypoints
-  CompoundLineString3d centerline = continuous_lane.centerline();
   autoware_msgs::Lane lane_msg;
-
+  BasicPoint3d prev_point;
   int wp_id = 0;
-  // for (auto& point : centerline)
-  int wp_length = centerline.size() - 1;
-  for (int i = 0; i <= wp_length; i++)
+  bool first_point = true;
+
+  // Loop over each lanelet
+  for (auto lanelet : continuous_lane.lanelets())
   {
-    auto point = centerline[i];
-    autoware_msgs::Waypoint new_wp;
-    new_wp.pose.pose.position.x = point.x();
-    new_wp.pose.pose.position.y = point.y();
-    new_wp.pose.pose.position.z = point.z();
-    new_wp.twist.twist.linear.x = 12; // m/s
+    std::string turn_direction = lanelet.attributeOr("turn_direction", "straight");
+    // CompoundLineString3d centerline = lanelet.centerline();
+    ConstLineString3d centerline = lanelet.centerline();
+    int wp_length = centerline.size() - 1;
 
-    if (i == wp_length)
+
+    traffic_rules::SpeedLimitInformation speed_limit = traffic_rules->speedLimit(lanelet);
+
+    // Loop over each centerline point
+    for (int i = 0; i <= wp_length; i++)
     {
-      new_wp.pose.pose.orientation = lane_msg.waypoints.back().pose.pose.orientation;
-    }
-    else
-    {
-      auto next_point = centerline[i+1];
-      double yaw = atan2(next_point.y() - point.y(), next_point.x() - point.x());
-      tf2::Quaternion orientation;
-      orientation.setRPY(0, 0, yaw);
-      tf2::convert(orientation, new_wp.pose.pose.orientation);
-    }
+      auto point = centerline[i];
 
-    // new_wp.gid = new_wp.lid = wp_id;
+      // Check for duplicate points
+      if (!first_point)
+      {
+        float dist = std::hypot(std::hypot(point.x() - prev_point.x(), point.y() - prev_point.y()), point.z() - prev_point.z());
+        if (dist < 0.001)
+        {
+          ROS_INFO("FOUND DUPE");
+          continue;
+        }
+      }
+      else
+      {
+        first_point = false;
+      }
 
-    lane_msg.waypoints.push_back(new_wp);
-    wp_id++;
+      autoware_msgs::Waypoint new_wp;
+      new_wp.pose.pose.position.x = point.x();
+      new_wp.pose.pose.position.y = point.y();
+      new_wp.pose.pose.position.z = point.z();
+
+      // TODO: Assign this speed based on speed limit of the road
+      new_wp.twist.twist.linear.x = speed_limit.speedLimit.value(); // m/s
+
+      // Set orientation of the point, aiming at next point
+      if (i == wp_length)
+      {
+        new_wp.pose.pose.orientation = lane_msg.waypoints.back().pose.pose.orientation;
+      }
+      else
+      {
+        auto next_point = centerline[i+1];
+        double yaw = atan2(next_point.y() - point.y(), next_point.x() - point.x());
+        tf2::Quaternion orientation;
+        orientation.setRPY(0, 0, yaw);
+        tf2::convert(orientation, new_wp.pose.pose.orientation);
+      }
+
+      int steering_state = autoware_msgs::WaypointState::STR_STRAIGHT;
+      if (turn_direction.compare("right") == 0)
+      {
+        steering_state = autoware_msgs::WaypointState::STR_RIGHT;
+      }
+      if (turn_direction.compare("left") == 0)
+      {
+        steering_state = autoware_msgs::WaypointState::STR_LEFT;
+      }
+
+      new_wp.wpstate.steering_state = steering_state;
+      new_wp.gid = new_wp.lid = wp_id;
+
+      lane_msg.waypoints.push_back(new_wp);
+      wp_id++;
+
+      prev_point = point;
+    }
   }
 
   lane_msg.header.stamp = ros::Time(0);
@@ -174,10 +216,10 @@ void Ll2GlobalPlannerNl::poseGoalCb(const geometry_msgs::PoseStamped::ConstPtr& 
 }
 
 
-lanelet::Lanelet Ll2GlobalPlannerNl::getNearestLanelet(lanelet::BasicPoint2d point)
+Lanelet Ll2GlobalPlannerNl::getNearestLanelet(lanelet::BasicPoint2d point)
 {
-  std::vector<std::pair<double, lanelet::Lanelet>> closeLanelets = lanelet::geometry::findNearest(this->lanelet_map->laneletLayer, point, 1);
-  lanelet::Lanelet nearest_lanelet = closeLanelets[0].second;
+  std::vector<std::pair<double, Lanelet>> closeLanelets = geometry::findNearest(this->lanelet_map->laneletLayer, point, 1);
+  Lanelet nearest_lanelet = closeLanelets[0].second;
 
   return nearest_lanelet;
 }

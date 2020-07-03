@@ -353,6 +353,12 @@ void DecisionMakerNode::setWaypointStateUsingLanelet2Map(autoware_msgs::LaneArra
   {
     for (auto& wp : lane.waypoints)
     {
+      // Only assign wp steering state if not already assigned
+      if (wp.wpstate.steering_state != autoware_msgs::WaypointState::NULLSTATE)
+      {
+        continue;
+      }
+
       // default is straight
       int steering_state = autoware_msgs::WaypointState::STR_STRAIGHT;
       if (wp2laneletid.find(wp.gid) != wp2laneletid.end())
