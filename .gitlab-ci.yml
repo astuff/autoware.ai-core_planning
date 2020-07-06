@@ -69,7 +69,7 @@ variables:
 
 build_melodic:
   stage: build
-  image: autoware/autoware:bleedingedge-melodic-base
+  image: autonomoustuff/autoware:bleedingedge-melodic-base
   <<: *build_common
   only:
     - merge_requests
