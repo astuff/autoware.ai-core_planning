@@ -31,8 +31,6 @@
 
 #include "stanley_controller/mpc_trajectory.h"
 
-using namespace stanley_controller;
-
 namespace MPCUtils
 {
 /**
@@ -134,9 +132,9 @@ void calcPathRelativeTime(const autoware_msgs::Lane& path, std::vector<double>* 
  * @param [out] nearest_time time of nearest pose on trajectory
  * @return false when nearest pose couldn't find for some reasons
  */
-bool calcNearestPose(const MPCTrajectory& traj, const geometry_msgs::Pose& self_pose, geometry_msgs::Pose& nearest_pose,
-                     unsigned int& nearest_index, double& min_dist_error, double& nearest_yaw_error,
-                     double& nearest_time);
+bool calcNearestPose(const MPCTrajectory& traj, const geometry_msgs::Pose& self_pose, geometry_msgs::Pose* nearest_pose,
+                     unsigned int* nearest_index, double* min_dist_error, double* nearest_yaw_error,
+                     double* nearest_time);
 
 /**
  * @brief calculate nearest pose on MPCTrajectory with linear interpolation
@@ -150,8 +148,8 @@ bool calcNearestPose(const MPCTrajectory& traj, const geometry_msgs::Pose& self_
  * @return false when nearest pose couldn't find for some reasons
  */
 bool calcNearestPoseInterp(const MPCTrajectory& traj, const geometry_msgs::Pose& self_pose,
-                           geometry_msgs::Pose& nearest_pose, unsigned int& nearest_index, double& min_dist_error,
-                           double& nearest_yaw_error, double& nearest_time);
+                           geometry_msgs::Pose* nearest_pose, unsigned int* nearest_index, double* min_dist_error,
+                           double* nearest_yaw_error, double* nearest_time);
 
 /**
  * @brief filtering vector

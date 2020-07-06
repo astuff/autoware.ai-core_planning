@@ -16,7 +16,7 @@
 
 #include "stanley_controller/mpc_trajectory.h"
 
-namespace stanley_controller
+namespace MPCUtils
 {
 void MPCTrajectory::push_back(const double& xp, const double& yp, const double& zp, const double& yawp,
                               const double& vxp, const double& kp, const double& tp)
@@ -55,4 +55,4 @@ unsigned int MPCTrajectory::size() const
   }
 }
 
-}  // namespace stanley_controller
+}  // namespace MPCUtils

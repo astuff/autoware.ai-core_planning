@@ -9,6 +9,8 @@ find_package(
     autoware_health_checker
     autoware_msgs
     geometry_msgs
+    std_msgs
+    tf
     libwaypoint_follower
     roscpp
     roslint

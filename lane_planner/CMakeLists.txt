@@ -10,6 +10,9 @@ find_package(catkin REQUIRED COMPONENTS
   lanelet2_extension
   libwaypoint_follower
   roscpp
+  roslint
+  rostest
+  rosunit
   std_msgs
   tablet_socket_msgs
   vector_map
@@ -136,7 +139,12 @@ install(
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
 )
 
-if(CATKIN_ENABLE_TESTING)
+set(ROSLINT_CPP_OPTS "--filter=-build/c++11")
+roslint_cpp(nodes/lane_select/hermite_curve.cpp
+            nodes/lane_select/lane_select_core.cpp
+            nodes/lane_select/lane_select_node.cpp)
+
+if (CATKIN_ENABLE_TESTING)
     find_package(rostest REQUIRED)
     add_rostest_gtest(test-lane_select
       test/test_lane_select.test
@@ -147,4 +155,6 @@ if(CATKIN_ENABLE_TESTING)
     add_dependencies(test-lane_select ${catkin_EXPORTED_TARGETS})
     target_link_libraries(test-lane_select
     ${catkin_LIBRARIES})
-endif()
+
+    roslint_add_test()
+endif ()

@@ -555,6 +555,10 @@ VectorMap create_lane_vmap(const VectorMap& vmap, int lno)
     }
   }
 
+  for (const vector_map::RoadSign& r : vmap.roadsigns) {
+    lane_vmap.roadsigns.push_back(r);
+  }
+
   return lane_vmap;
 }
 

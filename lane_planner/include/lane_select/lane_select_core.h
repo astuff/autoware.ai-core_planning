@@ -80,15 +80,17 @@ private:
   ros::Subscriber sub1_, sub5_, sub6_;
   message_filters::Subscriber<geometry_msgs::PoseStamped> sub2_;
   message_filters::Subscriber<geometry_msgs::TwistStamped> sub3_;
-  using PoseTwistSyncPolicy = message_filters::sync_policies::ApproximateTime<geometry_msgs::PoseStamped, geometry_msgs::TwistStamped>;
+  using PoseTwistSyncPolicy =
+      message_filters::sync_policies::ApproximateTime<geometry_msgs::PoseStamped, geometry_msgs::TwistStamped>;
   using PoseTwistSync = message_filters::Synchronizer<PoseTwistSyncPolicy>;
   std::shared_ptr<PoseTwistSync> pose_twist_sync_;
 
   // variables
-  int32_t lane_array_id_, prev_lane_array_id_;
+  int32_t lane_array_id_;
   int32_t current_lane_idx_, prev_lane_idx_;
   int32_t right_lane_idx_;
   int32_t left_lane_idx_;
+  bool is_new_lane_array_;
 
   using LaneTuple = std::tuple<autoware_msgs::Lane, int32_t, ChangeFlag>;
   // Hold lane array information subscribed from /traffic_waypoints_array

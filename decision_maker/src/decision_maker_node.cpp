@@ -12,20 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <gtest/gtest.h>
-#include <ros/ros.h>
+#include "decision_maker/decision_maker_node.h"
 
-class TestSuite :
-  public ::testing::Test
+int main(int argc, char** argv)
 {
-public:
-  TestSuite() {}
-  ~TestSuite() {}
-};
+  ros::init(argc, argv, "decision_maker");
+  decision_maker::DecisionMakerNode smn;
+  smn.run();
 
-int main(int argc, char **argv)
-{
-  testing::InitGoogleTest(&argc, argv);
-  ros::init(argc, argv, "DecisionMakerTestNode");
-  return RUN_ALL_TESTS();
+  return 0;
 }

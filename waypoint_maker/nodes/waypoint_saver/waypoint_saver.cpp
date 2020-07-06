@@ -33,6 +33,13 @@ static const int SYNC_FRAMES = 50;
 typedef message_filters::sync_policies::ApproximateTime<geometry_msgs::TwistStamped, geometry_msgs::PoseStamped>
     TwistPoseSync;
 
+enum class Reference_location
+{
+  REAR_AXLE_CENTER = 0,
+  CENTER_OF_GRAVITY = 1,
+  FRONT_AXLE_CENTER = 2,
+};
+
 class WaypointSaver
 {
 public:
@@ -45,8 +52,8 @@ private:
   void TwistPoseCallback(const geometry_msgs::TwistStampedConstPtr &twist_msg,
                          const geometry_msgs::PoseStampedConstPtr &pose_msg) const;
   void poseCallback(const geometry_msgs::PoseStampedConstPtr &pose_msg) const;
-  void displayMarker(geometry_msgs::Pose pose, double velocity) const;
-  void outputProcessing(geometry_msgs::Pose current_pose, double velocity) const;
+  void displayMarker(const geometry_msgs::Pose& pose, double velocity) const;
+  void outputProcessing(const geometry_msgs::Pose& updated_pose, double velocity) const;
 
   // handle
   ros::NodeHandle nh_;
@@ -64,9 +71,14 @@ private:
   bool save_velocity_;
   double interval_;
   std::string filename_, pose_topic_, velocity_topic_;
+  Reference_location reference_location_;
+  // distance from the center of rear axle to the center of front axle.
+  double wheelbase_;
+  // distance from the center of rear axle to the center of gravity
+  double rear_to_cog_;
 };
 
-WaypointSaver::WaypointSaver() : private_nh_("~")
+WaypointSaver::WaypointSaver() : nh_(), private_nh_("~")
 {
   // parameter settings
   private_nh_.param<std::string>("save_filename", filename_, std::string("data.txt"));
@@ -74,6 +86,11 @@ WaypointSaver::WaypointSaver() : private_nh_("~")
   private_nh_.param<std::string>("velocity_topic", velocity_topic_, std::string("current_velocity"));
   private_nh_.param<double>("interval", interval_, 1.0);
   private_nh_.param<bool>("save_velocity", save_velocity_, false);
+  int32_t temp_location;
+  private_nh_.param<int>("reference_location", temp_location, 0);
+  reference_location_ = static_cast<Reference_location>(temp_location);
+  nh_.param("vehicle_info/wheel_base", wheelbase_, 2.789);
+  rear_to_cog_ = wheelbase_ / 2.0;
 
   // subscriber
   pose_sub_ = new message_filters::Subscriber<geometry_msgs::PoseStamped>(nh_, pose_topic_, 50);
@@ -111,17 +128,31 @@ void WaypointSaver::TwistPoseCallback(const geometry_msgs::TwistStampedConstPtr 
   outputProcessing(pose_msg->pose, mps2kmph(twist_msg->twist.linear.x));
 }
 
-void WaypointSaver::outputProcessing(geometry_msgs::Pose current_pose, double velocity) const
+void WaypointSaver::outputProcessing(const geometry_msgs::Pose &updated_pose, double velocity) const
 {
   std::ofstream ofs(filename_.c_str(), std::ios::app);
   static geometry_msgs::Pose previous_pose;
   static bool receive_once = false;
+  geometry_msgs::Pose current_pose = updated_pose;
+  double current_heading = tf::getYaw(updated_pose.orientation);
+
+  if (reference_location_ == Reference_location::CENTER_OF_GRAVITY)
+  {
+    current_pose.position.x = updated_pose.position.x + rear_to_cog_ * std::cos(current_heading);
+    current_pose.position.y = updated_pose.position.y + rear_to_cog_ * std::sin(current_heading);
+  }
+  else if (reference_location_ == Reference_location::FRONT_AXLE_CENTER)
+  {
+    current_pose.position.x = updated_pose.position.x + wheelbase_ * std::cos(current_heading);
+    current_pose.position.y = updated_pose.position.y + wheelbase_ * std::sin(current_heading);
+  }
+
   // first subscribe
   if (!receive_once)
   {
     ofs << "x,y,z,yaw,velocity,change_flag" << std::endl;
     ofs << std::fixed << std::setprecision(4) << current_pose.position.x << "," << current_pose.position.y << ","
-        << current_pose.position.z << "," << tf::getYaw(current_pose.orientation) << ",0,0" << std::endl;
+        << current_pose.position.z << "," << current_heading << ",0,0" << std::endl;
     receive_once = true;
     displayMarker(current_pose, 0);
     previous_pose = current_pose;
@@ -135,7 +166,7 @@ void WaypointSaver::outputProcessing(geometry_msgs::Pose current_pose, double ve
     if (distance > interval_)
     {
       ofs << std::fixed << std::setprecision(4) << current_pose.position.x << "," << current_pose.position.y << ","
-          << current_pose.position.z << "," << tf::getYaw(current_pose.orientation) << "," << velocity << ",0" << std::endl;
+          << current_pose.position.z << "," << current_heading << "," << velocity << ",0" << std::endl;
 
       displayMarker(current_pose, velocity);
       previous_pose = current_pose;
@@ -143,7 +174,7 @@ void WaypointSaver::outputProcessing(geometry_msgs::Pose current_pose, double ve
   }
 }
 
-void WaypointSaver::displayMarker(geometry_msgs::Pose pose, double velocity) const
+void WaypointSaver::displayMarker(const geometry_msgs::Pose &pose, double velocity) const
 {
   static visualization_msgs::MarkerArray marray;
   static int id = 0;
