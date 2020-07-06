@@ -276,8 +276,6 @@ void DecisionMakerNode::initVectorMap(void)
   {
     // Map must be populated before setupStateCallback() is called
     // in DecisionMakerNode constructor
-    ROS_INFO("Subscribing to vector map topics.");
-
     g_vmap.subscribe( nh_, Category::POINT | Category::LINE | Category::VECTOR |
       Category::AREA | Category::STOP_LINE | Category::ROAD_SIGN | Category::CROSS_ROAD,
       ros::Duration(1.0));
