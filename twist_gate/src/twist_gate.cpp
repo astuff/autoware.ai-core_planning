@@ -46,6 +46,7 @@ TwistGate::TwistGate(const ros::NodeHandle& nh, const ros::NodeHandle& private_n
 {
   private_nh_.param<double>("loop_rate", loop_rate_, 30.0);
   private_nh_.param<bool>("use_decision_maker", use_decision_maker_, false);
+  private_nh_.param<bool>("use_lgsim", use_lgsim_, false);
 
   health_checker_ptr_ = std::make_shared<autoware_health_checker::HealthChecker>(nh_, private_nh_);
   control_command_pub_ = nh_.advertise<std_msgs::String>("/ctrl_mode", 1);
@@ -302,7 +303,14 @@ void TwistGate::state_callback(const std_msgs::StringConstPtr& input_msg)
     // Set Drive Gear
     else
     {
-      twist_gate_msg_.gear = CMD_GEAR_D;
+      if (use_lgsim_)
+      {
+        twist_gate_msg_.gear = CMD_GEAR_S;
+      }
+      else
+      {
+        twist_gate_msg_.gear = CMD_GEAR_D;
+      }
     }
 
     // get drive state

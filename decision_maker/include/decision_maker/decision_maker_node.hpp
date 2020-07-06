@@ -164,12 +164,16 @@ private:
   bool disuse_vector_map_;
   bool insert_stop_line_wp_;
   int param_num_of_steer_behind_;
+  int distance_before_lane_change_signal_;
   double change_threshold_dist_;
   double change_threshold_angle_;
   double goal_threshold_dist_;
   double goal_threshold_vel_;
   double stopped_vel_;
   int stopline_reset_count_;
+  bool sim_mode_;
+  bool use_lanelet_map_;
+  std::string stop_sign_id_;
 
   bool sim_mode_;
   bool use_lanelet_map_;
@@ -372,6 +376,7 @@ public:
     , disuse_vector_map_(false)
     , insert_stop_line_wp_(true)
     , param_num_of_steer_behind_(30)
+    , distance_before_lane_change_signal_(30)
     , change_threshold_dist_(1.0)
     , change_threshold_angle_(15)
     , goal_threshold_dist_(3.0)
@@ -395,6 +400,7 @@ public:
     private_nh_.getParam("use_fms", use_fms_);
     private_nh_.getParam("disuse_vector_map", disuse_vector_map_);
     private_nh_.getParam("param_num_of_steer_behind", param_num_of_steer_behind_);
+    private_nh_.getParam("distance_before_lane_change_signal", distance_before_lane_change_signal_);
     private_nh_.getParam("change_threshold_dist", change_threshold_dist_);
     private_nh_.getParam("change_threshold_angle", change_threshold_angle_);
     private_nh_.getParam("goal_threshold_dist", goal_threshold_dist_);

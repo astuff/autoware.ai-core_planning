@@ -1,12 +1,12 @@
 repositories:
   depends/autoware/common:
     type: git
-    url: https://gitlab.com/autowarefoundation/autoware.ai/common.git
-    version: master
+    url: https://gitlab.com/astuff/autoware.ai/common.git
+    version: as/master
   depends/autoware/messages:
     type: git
-    url: https://gitlab.com/autowarefoundation/autoware.ai/messages.git
-    version: master
+    url: https://gitlab.com/astuff/autoware.ai/messages.git
+    version: as/master
   depends/vendor/lanelet2:
     type: git
     url: https://github.com/fzi-forschungszentrum-informatik/Lanelet2.git

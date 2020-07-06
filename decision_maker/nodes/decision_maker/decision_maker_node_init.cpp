@@ -280,7 +280,7 @@ void DecisionMakerNode::initVectorMap(void)
 
     g_vmap.subscribe( nh_, Category::POINT | Category::LINE | Category::VECTOR |
       Category::AREA | Category::STOP_LINE | Category::ROAD_SIGN | Category::CROSS_ROAD,
-      ros::Duration(5.0));
+      ros::Duration(1.0));
 
     vmap_loaded =
         g_vmap.hasSubscribed(Category::POINT | Category::LINE | Category::AREA |
@@ -288,8 +288,12 @@ void DecisionMakerNode::initVectorMap(void)
 
     if (!vmap_loaded)
     {
-      ROS_WARN("Necessary vectormap topics have not been published.");
-      ROS_WARN("DecisionMaker will wait until the vectormap has been loaded.");
+      ROS_WARN_THROTTLE(5, "Necessary vectormap topics have not been published.");
+      ROS_WARN_THROTTLE(5, "DecisionMaker will wait until the vectormap has been loaded.");
+    }
+    else
+    {
+      ROS_INFO("Vectormap loaded.");
     }
   }
 

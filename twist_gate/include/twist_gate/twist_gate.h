@@ -40,6 +40,7 @@
 // headers in Autowae Health Checker
 #include <autoware_health_checker/health_checker/health_checker.h>
 
+#define CMD_GEAR_S 0  // This gear mode forces gear to 0 for LG sim
 #define CMD_GEAR_D 1
 #define CMD_GEAR_R 2
 #define CMD_GEAR_B 3
@@ -111,6 +112,7 @@ private:
 
   bool is_state_drive_ = false;
   bool use_decision_maker_ = false;
+  bool use_lgsim_ = false;
 
   bool emergency_handling_active_ = false;
 };
