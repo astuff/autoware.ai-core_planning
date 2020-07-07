@@ -305,11 +305,11 @@ void TwistGate::stateCallback(const std_msgs::StringConstPtr& input_msg)
     {
       if (use_lgsim_)
       {
-        twist_gate_msg_.gear = CMD_GEAR_S;
+        twist_gate_msg_.gear_cmd.gear = autoware_msgs::Gear::NONE;
       }
       else
       {
-        twist_gate_msg_.gear = CMD_GEAR_D;
+        twist_gate_msg_.gear_cmd.gear = autoware_msgs::Gear::DRIVE;
       }
     }
 
