@@ -182,10 +182,6 @@ private:
   bool use_lanelet_map_;
   std::string stop_sign_id_;
 
-  bool sim_mode_;
-  bool use_lanelet_map_;
-  std::string stop_sign_id_;
-
   // initialization method
   void initROS();
   void initVectorMap(void);
