@@ -43,7 +43,7 @@ class VelocitySetInfo
   double deceleration_stopline_;    // (m/s^2) deceleration for stopline
   double velocity_change_limit_;    // (m/s)
   double temporal_waypoints_size_;  // (meter)
-  int	wpidx_detectionResultByOtherNodes_; // waypoints index@finalwaypoints
+  int  wpidx_detectionResultByOtherNodes_; // waypoints index@finalwaypoints
 
   // ROS param
   double remove_points_upto_;
@@ -71,7 +71,7 @@ class VelocitySetInfo
 
   int getDetectionResultByOtherNodes() const
   {
-	  return wpidx_detectionResultByOtherNodes_;
+    return wpidx_detectionResultByOtherNodes_;
   }
 
   double getStopRange() const
