@@ -488,7 +488,7 @@ void changeWaypoints(const VelocitySetInfo& vs_info, const EControl& detection_r
   double velocity_change_limit = vs_info.getVelocityChangeLimit();
 
   if (detection_result == EControl::STOP || detection_result == EControl::STOPLINE)
-  {  
+  {
     // STOP for obstacle/stopline
     // stop_waypoint is about stop_distance meter away from obstacles/stoplines
     int stop_distance = (detection_result == EControl::STOP)

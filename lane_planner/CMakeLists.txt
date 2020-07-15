@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
   autoware_config_msgs
   autoware_msgs
   gnss
+  lanelet2_extension
   libwaypoint_follower
   roscpp
   roslint
@@ -15,7 +16,6 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tablet_socket_msgs
   vector_map
-  lanelet2_extension
 )
 
 set(CMAKE_CXX_FLAGS "-O2 -Wall ${CMAKE_CXX_FLAGS}")
@@ -23,15 +23,6 @@ set(CMAKE_CXX_FLAGS "-O2 -Wall ${CMAKE_CXX_FLAGS}")
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES lane_planner
-  CATKIN_DEPENDS
-    autoware_config_msgs
-    autoware_msgs
-    gnss
-    libwaypoint_follower
-    roscpp
-    std_msgs
-    tablet_socket_msgs
-    vector_map
 )
 
 include_directories(
@@ -149,7 +140,7 @@ install(
 )
 
 set(ROSLINT_CPP_OPTS "--filter=-build/c++11")
-roslint_cpp(nodes/lane_select/hermite_curve.cpp 
+roslint_cpp(nodes/lane_select/hermite_curve.cpp
             nodes/lane_select/lane_select_core.cpp
             nodes/lane_select/lane_select_node.cpp)
 

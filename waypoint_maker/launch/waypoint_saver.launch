@@ -1,7 +1,8 @@
 <!-- -->
 <launch>
-	<arg name="input_type" default="LaneArrayTopic" />
-	<arg name="save_filename" default="/tmp/saved_waypoints.csv" />
+
+  <arg name="input_type" default="LaneArrayTopic" />
+  <arg name="save_finename" default="/tmp/saved_waypoints.csv" />
   <arg name="interval" default="1" />
   <arg name="pose_topic" default="current_pose" />
   <arg name="velocity_topic" default="current_velocity" />
@@ -22,5 +23,5 @@
     <param name="lane_csv" value="$(arg save_filename)" />
     <param name="lane_topic" value="$(arg lane_topic)" />
   </node>
-  
+
 </launch>
