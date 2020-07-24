@@ -67,6 +67,14 @@ void DecisionMakerNode::callbackFromStateCmd(const std_msgs::String& msg)
   tryNextState(msg.data);
 }
 
+void DecisionMakerNode::callbackFromEngage(const std_msgs::Bool& msg)
+{
+  if (msg.data)
+  {
+    tryNextState("engage");
+  }
+}
+
 void DecisionMakerNode::callbackFromLaneChangeFlag(const std_msgs::Int32& msg)
 {
   current_status_.change_flag = msg.data;

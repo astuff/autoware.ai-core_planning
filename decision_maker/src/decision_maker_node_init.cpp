@@ -271,6 +271,7 @@ void DecisionMakerNode::createSubscriber(void)
   Subs["config/decision_maker"] =
     nh_.subscribe("config/decision_maker", 3, &DecisionMakerNode::callbackFromConfig, this);
   Subs["state_cmd"] = nh_.subscribe("state_cmd", 1, &DecisionMakerNode::callbackFromStateCmd, this);
+  Subs["vehicle_engage"] = nh_.subscribe("vehicle/engage", 1, &DecisionMakerNode::callbackFromEngage, this);
   Subs["current_velocity"] =
     nh_.subscribe("current_velocity", 1, &DecisionMakerNode::callbackFromCurrentVelocity, this);
   Subs["obstacle_waypoint"] =
