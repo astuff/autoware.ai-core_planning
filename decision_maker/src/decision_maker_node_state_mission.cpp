@@ -125,7 +125,7 @@ void DecisionMakerNode::updateMissionCheckState(cstring_t& state_name, int statu
   {
     if (current_status_.finalwaypoints.waypoints.size() < 5)
       publishOperatorHelpMessage(
-        "Finalwaypoints is too short.If you wont to Engage,\n"
+        "Finalwaypoints is too short.If you want to Engage,\n"
         "please publish \"mission_is_compatible\" key by \"state_cmd\" topic.");
     else
       tryNextState("mission_is_compatible");

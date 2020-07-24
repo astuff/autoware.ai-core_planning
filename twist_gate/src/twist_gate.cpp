@@ -295,8 +295,9 @@ void TwistGate::stateCallback(const std_msgs::StringConstPtr& input_msg)
   state_time_ = ros::Time::now();
   if (command_mode_ == CommandMode::AUTO && !emergency_handling_active_)
   {
-    // Set Parking Gear
-    if (input_msg->data.find("WaitOrder") != std::string::npos)
+    // Set gear based on motion states
+    if (input_msg->data.find("WaitEngage") != std::string::npos ||
+        input_msg->data.find("WaitDriveReady") != std::string::npos)
     {
       twist_gate_msg_.gear_cmd.gear = autoware_msgs::Gear::PARK;
     }

@@ -45,6 +45,7 @@
 #include <jsk_recognition_msgs/BoundingBoxArray.h>
 #include <jsk_rviz_plugins/OverlayText.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <std_msgs/Bool.h>
 #include <std_msgs/Float64.h>
 #include <std_msgs/Float64MultiArray.h>
 #include <std_msgs/Int32.h>
@@ -334,6 +335,7 @@ private:
   void callbackFromSimPose(const geometry_msgs::PoseStamped& msg);
   void callbackFromConfig(const autoware_config_msgs::ConfigDecisionMaker& msg);
   void callbackFromStateCmd(const std_msgs::String& msg);
+  void callbackFromEngage(const std_msgs::Bool& msg);
   void callbackFromObstacleWaypoint(const std_msgs::Int32& msg);
   void callbackFromStoplineWaypoint(const std_msgs::Int32& msg);
   void callbackFromStopOrder(const std_msgs::Int32& msg);

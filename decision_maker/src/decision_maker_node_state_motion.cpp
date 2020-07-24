@@ -52,6 +52,7 @@ void DecisionMakerNode::updateDriveState(cstring_t& state_name, int status)
 {
   if (isArrivedGoal())
   {
+    publishOperatorHelpMessage("Arrived at goal point");
     tryNextState("arrived_goal");
     return;
   }
@@ -65,7 +66,7 @@ void DecisionMakerNode::updateDriveState(cstring_t& state_name, int status)
 
   if (current_status_.finalwaypoints.waypoints.empty())
   {
-    ROS_WARN("\"/final_waypoints.\" is not contain waypoints");
+    ROS_WARN("\"/final_waypoints.\" does not contain waypoints");
     return;
   }
 }
