@@ -178,13 +178,17 @@ void DecisionMakerNode::updateStopState(cstring_t& state_name, int status)
 
   if (current_status_.obstacle_waypoint != -1)
   {
+    // the stopline waypoint is further away from obstacle waypoint.
     if ((current_status_.found_stopsign_idx != -1 && current_status_.found_stopsign_idx >= obstacle_waypoint_gid)
         || (current_status_.ordered_stop_idx != -1 && current_status_.ordered_stop_idx >= obstacle_waypoint_gid))
+      // should return from here. I think it is a bug.
       tryNextState("clear");
   }
 
+  // What is the point to check get_stopsign.first != 0?
   if (get_stopsign.first != 0 && current_status_.found_stopsign_idx != -1)
   {
+    // the stopline waypoint is closer than the ordered stop waypoint.
     if (current_status_.ordered_stop_idx == -1 ||
         current_status_.found_stopsign_idx < current_status_.ordered_stop_idx)
     {
@@ -206,6 +210,7 @@ void DecisionMakerNode::updateStopState(cstring_t& state_name, int status)
 
   if (current_status_.ordered_stop_idx != -1)
   {
+    // What is the point to check current_status_.found_stopsign_idx == -1?
     if (current_status_.found_stopsign_idx == -1 ||
         current_status_.ordered_stop_idx <= current_status_.found_stopsign_idx)
     {
