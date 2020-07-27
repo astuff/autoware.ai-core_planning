@@ -116,33 +116,37 @@ struct AutowareStatus
   autoware_msgs::LaneArray using_lane_array;  // with wpstate
   autoware_msgs::LaneArray based_lane_array;
 
-  // Holds waypoints list in /final_waypoints published by velocity_set.
+  // It holds waypoints list in /final_waypoints published by velocity_set.
   autoware_msgs::Lane finalwaypoints;
 
-  // Holds the index of the closest waypoint from the ego-vehicle published by velocity_set. 
+  // It holds the index of the closest waypoint from the ego-vehicle published by velocity_set. 
   int closest_waypoint;
 
-  // Holds the index of waypoint from the closest_waypoint where there is an obstacle 
+  // It holds the index of waypoint from the closest_waypoint where there is an obstacle 
   // detected by point cloud data. It is currently published by velocity_set.
   // NOTE: it is relative to the closest_waypoint!!!
   int obstacle_waypoint;
 
-  // Hold index of stop line waypoint published by other nodes such as velocity_set.
+  // It holds index of stop line waypoint published by other nodes such as velocity_set.
   // It is very possible that found_stopsign_idx is not -1 but stopline_waypoint is -1
   // because velocity_set only search stop sign waypoint within certain distance from
   // the ego-vehicle.
   int stopline_waypoint;
 
+  // It holds change flag from topic /change_flag published by lane_select.
   int change_flag;
 
   // vehicle status
   geometry_msgs::Pose pose;
   double velocity;  // kmph
 
-  // hold the index of the closest waypoint in /final_waypoints which associated with a stop sign.
+  // It holds the index of the closest waypoint in /final_waypoints which associated with 
+  // a stop sign. Unline other waypoint indexes, this one is computed by decision_maker
+  // itself based on waypoints subscribed from /final_waypoints. 
   int found_stopsign_idx;
   int prev_stopped_wpidx;
-  // hold stop waypoint idx published by other node.
+
+  // It holds stop waypoint idx published by other nodes.
   int ordered_stop_idx;
   int prev_ordered_idx;
 

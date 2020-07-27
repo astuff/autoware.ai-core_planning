@@ -112,6 +112,9 @@ void DecisionMakerNode::entryMissionCheckState(cstring_t& state_name, int status
     Subs["final_waypoints"] =
         nh_.subscribe("final_waypoints", 1, &DecisionMakerNode::callbackFromFinalWaypoint, this);
   }
+
+  // This is mainly used as an external interface to stop the ego-vehicle at any waypoint.
+  // Seems the idx is the gid of the selected waypoint.
   if (!isSubscriberRegistered("stop_order_idx"))
   {
     Subs["stop_order_idx"] =
@@ -121,8 +124,10 @@ void DecisionMakerNode::entryMissionCheckState(cstring_t& state_name, int status
 
 void DecisionMakerNode::updateMissionCheckState(cstring_t& state_name, int status)
 {
+  // Both final waypoints and the closest_waypoint are received.
   if (isEventFlagTrue("received_finalwaypoints") && current_status_.closest_waypoint != -1)
   {
+    // The number 5 here is a bit ad-hoc.
     if (current_status_.finalwaypoints.waypoints.size() < 5)
       publishOperatorHelpMessage(
         "Finalwaypoints is too short.If you want to Engage,\n"
