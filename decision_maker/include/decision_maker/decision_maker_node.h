@@ -128,7 +128,7 @@ struct AutowareStatus
   // So its gid = closest_waypoint + obstacle_waypoint
   int obstacle_waypoint = -1;
 
-  // It holds index of stop line waypoint published by other nodes.
+  // It holds index of stop line waypoint published by velocity_set.
   // It is very possible that found_stopsign_idx is not -1 but stopline_waypoint is -1
   // because velocity_set only search stop sign waypoint within certain distance from
   // the ego-vehicle.
