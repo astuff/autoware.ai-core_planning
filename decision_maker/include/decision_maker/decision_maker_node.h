@@ -121,24 +121,25 @@ struct AutowareStatus
   int stopline_waypoint;
   int change_flag;
 
-  // vehicle status
+  // It holds ego-vehicle's current pose.
   geometry_msgs::Pose pose;
-  double velocity;  // kmph
+  // It holds ego-vehicle's current velocity in m/s.
+  double velocity;
 
   int found_stopsign_idx;
   int prev_stopped_wpidx;
   int ordered_stop_idx;
   int prev_ordered_idx;
 
-  AutowareStatus(void) :
-    closest_waypoint(-1),
-    obstacle_waypoint(-1),
-    stopline_waypoint(-1),
-    velocity(0),
-    found_stopsign_idx(-1),
-    prev_stopped_wpidx(-1),
-    ordered_stop_idx(-1),
-    prev_ordered_idx(-1)
+  AutowareStatus(void)
+    : closest_waypoint(-1)
+    , obstacle_waypoint(-1)
+    , stopline_waypoint(-1)
+    , velocity(0)
+    , found_stopsign_idx(-1)
+    , prev_stopped_wpidx(-1)
+    , ordered_stop_idx(-1)
+    , prev_ordered_idx(-1)
   {
   }
 };
@@ -175,9 +176,9 @@ private:
   int distance_before_lane_change_signal_;
   double change_threshold_dist_;
   double change_threshold_angle_;
-  double goal_threshold_dist_;
-  double goal_threshold_vel_;
-  double stopped_vel_;
+  double goal_threshold_dist_;  // in meter
+  double goal_threshold_vel_;  // in m/s
+  double stopped_vel_;  // in m/s
   int stopline_reset_count_;
   bool sim_mode_;
   bool use_lanelet_map_;

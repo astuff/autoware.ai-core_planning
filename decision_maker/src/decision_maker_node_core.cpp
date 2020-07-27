@@ -62,6 +62,8 @@ DecisionMakerNode::DecisionMakerNode()
   std::string file_name_vehicle;
   std::string file_name_behavior;
   std::string file_name_motion;
+  double goal_threshold_vel_kmph;
+  double stopped_vel_kmph;
   private_nh_.getParam("state_vehicle_file_name", file_name_vehicle);
   private_nh_.getParam("state_mission_file_name", file_name_mission);
   private_nh_.getParam("state_behavior_file_name", file_name_behavior);
@@ -76,14 +78,16 @@ DecisionMakerNode::DecisionMakerNode()
   private_nh_.getParam("change_threshold_dist", change_threshold_dist_);
   private_nh_.getParam("change_threshold_angle", change_threshold_angle_);
   private_nh_.getParam("goal_threshold_dist", goal_threshold_dist_);
-  private_nh_.getParam("goal_threshold_vel", goal_threshold_vel_);
-  private_nh_.getParam("stopped_vel", stopped_vel_);
+  private_nh_.getParam("goal_threshold_vel", goal_threshold_vel_kmph);
+  private_nh_.getParam("stopped_vel", stopped_vel_kmph);
   private_nh_.getParam("stopline_reset_count", stopline_reset_count_);
   private_nh_.getParam("sim_mode", sim_mode_);
   private_nh_.getParam("use_ll2", use_lanelet_map_);
   private_nh_.param<std::string>("stop_sign_id", stop_sign_id_, "stop_sign");
 
   current_status_.prev_stopped_wpidx = -1;
+  goal_threshold_vel_ = amathutils::kmph2mps(goal_threshold_vel_kmph);
+  stopped_vel_ = amathutils::kmph2mps(stopped_vel_kmph);
 
   ctx_vehicle.reset(new state_machine::StateContext(file_name_vehicle, "autoware_states_vehicle"));
   ctx_mission.reset(new state_machine::StateContext(file_name_mission, "autoware_states_mission"));
