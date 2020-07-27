@@ -79,7 +79,7 @@ std::pair<uint8_t, int> DecisionMakerNode::getStopSignStateFromWaypoint(void)
   static const double margin = 5;
   static const double reaction_time = 0.3 + margin;  // system delay(sec)
   static const size_t reset_count = stopline_reset_count_;
-  const double velocity = amathutils::kmph2mps(current_status_.velocity);
+  const double velocity = current_status_.velocity;
 
   const double free_running_distance = reaction_time * velocity;
   const double braking_distance = velocity * velocity / (2 * g * mu);

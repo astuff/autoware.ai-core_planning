@@ -76,7 +76,7 @@ double DecisionMakerNode::calcRequiredDistForStop(void) const
   static const double g = 9.80665;
   static const double margin = 5;
   static const double reaction_time = 0.3 + margin;  // system delay(sec)
-  const double velocity = amathutils::kmph2mps(current_status_.velocity);
+  const double velocity = current_status_.velocity;
 
   const double free_running_distance = reaction_time * velocity;
   const double braking_distance = velocity * velocity / (2 * g * mu);

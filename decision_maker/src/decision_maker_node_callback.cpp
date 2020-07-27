@@ -91,8 +91,8 @@ void DecisionMakerNode::callbackFromConfig(const autoware_config_msgs::ConfigDec
   change_threshold_dist_ = msg.change_threshold_dist;
   change_threshold_angle_ = msg.change_threshold_angle;
   goal_threshold_dist_ = msg.goal_threshold_dist;
-  goal_threshold_vel_ = msg.goal_threshold_vel;
-  stopped_vel_ = msg.stopped_vel;
+  goal_threshold_vel_ = amathutils::kmph2mps(msg.goal_threshold_vel);
+  stopped_vel_ = amathutils::kmph2mps(msg.stopped_vel);
   ignore_map_ = msg.disuse_vector_map;
   sim_mode_ = msg.sim_mode;
   insert_stop_line_wp_ = msg.insert_stop_line_wp;
@@ -569,7 +569,7 @@ void DecisionMakerNode::callbackFromCurrentPose(const geometry_msgs::PoseStamped
 
 void DecisionMakerNode::callbackFromCurrentVelocity(const geometry_msgs::TwistStamped& msg)
 {
-  current_status_.velocity = amathutils::mps2kmph(msg.twist.linear.x);
+  current_status_.velocity = msg.twist.linear.x;
 }
 
 void DecisionMakerNode::callbackFromObstacleWaypoint(const std_msgs::Int32& msg)
