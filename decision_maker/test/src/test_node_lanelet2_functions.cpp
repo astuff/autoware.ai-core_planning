@@ -100,7 +100,7 @@ public:
       wp.twist.twist.linear.x = 5.0;
       wp.twist.twist.angular.z = 0.0;
 
-      wp.wpstate.steering_state = autoware_msgs::WaypointState::STR_STRAIGHT;
+      wp.wpstate.steering_state = autoware_msgs::WaypointState::NULLSTATE;
       wp.wpstate.stop_state = autoware_msgs::WaypointState::NULLSTATE;
       wp.wpstate.event_state = autoware_msgs::WaypointState::TYPE_EVENT_NULL;
 
@@ -164,11 +164,13 @@ TEST_F(TestSuiteLanelet, setWaypointStateUsingLanelet2Map)
   ASSERT_EQ(autoware_msgs::WaypointState::STR_STRAIGHT, getSteeringStateFromWaypoint(lane_array))
       << "Could not get the expected state"
       << "It should be " << autoware_msgs::WaypointState::STR_STRAIGHT;
+  createLaneArray(&lane_array);
   test_obj_.setTurnDirectionToMap("left");
   test_obj_.setWaypointStateUsingLanelet2Map(&lane_array);
   ASSERT_EQ(autoware_msgs::WaypointState::STR_LEFT, getSteeringStateFromWaypoint(lane_array))
       << "Could not get the expected state"
       << "It should be " << autoware_msgs::WaypointState::STR_LEFT;
+  createLaneArray(&lane_array);
   test_obj_.setTurnDirectionToMap("right");
   test_obj_.setWaypointStateUsingLanelet2Map(&lane_array);
   ASSERT_EQ(autoware_msgs::WaypointState::STR_RIGHT, getSteeringStateFromWaypoint(lane_array))

@@ -73,6 +73,7 @@ DecisionMakerNode::DecisionMakerNode()
   private_nh_.getParam("auto_mission_change", auto_mission_change_);
   private_nh_.getParam("use_fms", use_fms_);
   private_nh_.getParam("ignore_map", ignore_map_);
+  private_nh_.getParam("insert_stop_line_wp", insert_stop_line_wp_);
   private_nh_.getParam("param_num_of_steer_behind", param_num_of_steer_behind_);
   private_nh_.getParam("distance_before_lane_change_signal", distance_before_lane_change_signal_);
   private_nh_.getParam("change_threshold_dist", change_threshold_dist_);
