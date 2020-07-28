@@ -115,33 +115,43 @@ struct AutowareStatus
   // planning status
   autoware_msgs::LaneArray using_lane_array;  // with wpstate
   autoware_msgs::LaneArray based_lane_array;
+
+  // It holds waypoints published in /final_waypoints by velocity_set.
   autoware_msgs::Lane finalwaypoints;
-  int closest_waypoint;
-  int obstacle_waypoint;
-  int stopline_waypoint;
-  int change_flag;
 
-  // It holds ego-vehicle's current pose.
-  geometry_msgs::Pose pose;
-  // It holds ego-vehicle's current velocity in m/s.
-  double velocity;
+  // It holds gid of the closest waypoint from the ego-vehicle.
+  int closest_waypoint = -1;
 
-  int found_stopsign_idx;
-  int prev_stopped_wpidx;
-  int ordered_stop_idx;
-  int prev_ordered_idx;
+  // It holds the index of a waypoint from the closest_waypoint where there is
+  // an obstacle detected.
+  // NOTE: it is relative to the closest_waypoint!!!
+  // So its gid = closest_waypoint + obstacle_waypoint
+  int obstacle_waypoint = -1;
 
-  AutowareStatus(void)
-    : closest_waypoint(-1)
-    , obstacle_waypoint(-1)
-    , stopline_waypoint(-1)
-    , velocity(0)
-    , found_stopsign_idx(-1)
-    , prev_stopped_wpidx(-1)
-    , ordered_stop_idx(-1)
-    , prev_ordered_idx(-1)
-  {
-  }
+  // It holds index of stop line waypoint published by velocity_set.
+  // It is very possible that found_stopsign_idx is not -1 but stopline_waypoint is -1
+  // because velocity_set only search stop sign waypoint within certain distance from
+  // the ego-vehicle.
+  // NOTE: it is relative to the closest_waypoint!!!
+  // So its gid = closest_waypoint + stopline_waypoint
+  int stopline_waypoint = -1;
+
+  // It holds change flag from topic /change_flag published by lane_select.
+  int change_flag = -1;
+
+  // vehicle status
+  geometry_msgs::Pose pose{};
+  double velocity = 0.0;
+
+  // It holds the gid of the closest stop sign waypoint in /final_waypoints. Unline
+  // other waypoint indexes, this one is computed by decision_maker itself based on
+  // waypoints subscribed from /final_waypoints.
+  int found_stopsign_idx = -1;
+  int prev_stopped_wpidx = -1;
+
+  // It holds ordered stop waypoint's gid published by other nodes.
+  int ordered_stop_idx = -1;
+  int prev_ordered_idx = -1;
 };
 
 class DecisionMakerNode
