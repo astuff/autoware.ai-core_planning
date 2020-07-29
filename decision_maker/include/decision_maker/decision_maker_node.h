@@ -192,7 +192,6 @@ private:
   int stopline_reset_count_;
   bool sim_mode_;
   bool use_lanelet_map_;
-  std::string stop_sign_id_;
 
   // initialization method
   void initROS();
