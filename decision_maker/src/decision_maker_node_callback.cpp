@@ -390,7 +390,7 @@ void DecisionMakerNode::setWaypointStateUsingLanelet2Map(autoware_msgs::LaneArra
   lanelet::ConstLanelets all_lanelets = lanelet::utils::query::laneletLayer(lanelet_map_);
 
   // Get stop lines associated with stop signs (not traffic lights)
-  lanelet::ConstLineStrings3d stoplines = lanelet::utils::query::getStopSignStopLines(all_lanelets, stop_sign_id_);
+  lanelet::ConstLineStrings3d stoplines = lanelet::utils::query::getStopSignStopLines(all_lanelets);
 
   for (auto& lane : lane_array.lanes)
   {

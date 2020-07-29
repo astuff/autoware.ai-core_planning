@@ -84,7 +84,6 @@ DecisionMakerNode::DecisionMakerNode()
   private_nh_.getParam("stopline_reset_count", stopline_reset_count_);
   private_nh_.getParam("sim_mode", sim_mode_);
   private_nh_.getParam("use_ll2", use_lanelet_map_);
-  private_nh_.param<std::string>("stop_sign_id", stop_sign_id_, "stop_sign");
 
   current_status_.prev_stopped_wpidx = -1;
   goal_threshold_vel_ = amathutils::kmph2mps(goal_threshold_vel_kmph);
