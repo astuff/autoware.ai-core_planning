@@ -103,8 +103,8 @@ void DecisionMakerNode::callbackFromLightColor(const ros::MessageEvent<autoware_
   ROS_WARN("%s is not implemented", __func__);
 }
 
-void DecisionMakerNode::insertPointWithinCrossRoad(const std::vector<CrossRoadArea>& _intersects,
-                                                   autoware_msgs::LaneArray& lane_array)
+// Insert waypoints inside intersections (crossroads)
+void DecisionMakerNode::insertPointWithinCrossRoad(autoware_msgs::LaneArray& lane_array)
 {
   for (auto& lane : lane_array.lanes)
   {
@@ -115,21 +115,22 @@ void DecisionMakerNode::insertPointWithinCrossRoad(const std::vector<CrossRoadAr
       pp.y = wp.pose.pose.position.y;
       pp.z = wp.pose.pose.position.z;
 
-      for (auto& area : intersects)
+      // for each crossroad area
+      for (auto& area : intersects_)
       {
+        // if waypoint exists in crossroad area
         if (CrossRoadArea::isInsideArea(&area, pp))
         {
-          // area's
           if (area.insideLanes.empty() || wp.gid != area.insideLanes.back().waypoints.back().gid + 1)
           {
-            autoware_msgs::Lane nlane;
-            area.insideLanes.push_back(nlane);
+            area.insideLanes.emplace_back();
             area.bbox.pose.orientation = wp.pose.pose.orientation;
           }
           area.insideLanes.back().waypoints.push_back(wp);
           area.insideWaypoint_points.push_back(pp);  // geometry_msgs::point
           // area.insideLanes.Waypoints.push_back(wp);//autoware_msgs::Waypoint
-          // lane's wp
+
+          // assign crossroad's aid to waypoint
           wp.wpstate.aid = area.area_id;
         }
       }
@@ -139,9 +140,9 @@ void DecisionMakerNode::insertPointWithinCrossRoad(const std::vector<CrossRoadAr
 
 void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray& lane_array)
 {
-  insertPointWithinCrossRoad(intersects, lane_array);
+  insertPointWithinCrossRoad(lane_array);
   // STR
-  for (auto& area : intersects)
+  for (auto& area : intersects_)
   {
     for (auto& laneinArea : area.insideLanes)
     {
@@ -291,13 +292,15 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
             if (amathutils::getIntersect(lane.waypoints.at(wp_idx).pose.pose.position,
                                          lane.waypoints.at(wp_idx + 1).pose.pose.position, bp, fp, &intersect_point))
             {
-              double dist_front =
+              const double dist_front =
                   amathutils::find_distance(intersect_point, lane.waypoints.at(wp_idx + 1).pose.pose.position);
-              double dist_back =
+              const double dist_back =
                   amathutils::find_distance(intersect_point, lane.waypoints.at(wp_idx).pose.pose.position);
               int target_wp_idx = wp_idx;
               if (dist_front < dist_back)
+              {
                 target_wp_idx = wp_idx + 1;
+              }
               lane.waypoints.at(target_wp_idx).wpstate.stop_state =
                   g_vmap.findByKey(Key<RoadSign>(stopline.signid)).type;
               ROS_INFO("Change waypoint type to stopline: #%d(%f, %f, %f)\n", target_wp_idx,
@@ -307,7 +310,7 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
             }
           }
           // if insert_stop_line_wp param is set to True (default: True)
-          // inserts a new waypoint more accurately where the waypoints and stopline intersects
+          // inserts a new waypoint more accurately where the waypoints and stopline intersects_
           else
           {
             center_point.x = (bp.x + fp.x) / 2;
@@ -324,6 +327,9 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
                 (wp.pose.pose.position.z + lane.waypoints.at(wp_idx + 1).pose.pose.position.z) / 2;
             wp.twist.twist.linear.x =
                 (wp.twist.twist.linear.x + lane.waypoints.at(wp_idx + 1).twist.twist.linear.x) / 2;
+
+            // label wp with its stopline id
+            wp.stop_line_id = stopline.id;
 
             ROS_INFO("Inserting stopline_interpolation_wp: #%zu(%f, %f, %f)\n", wp_idx + 1, interpolation_point.x,
                      interpolation_point.y, interpolation_point.z);
@@ -354,7 +360,7 @@ void DecisionMakerNode::setWaypointStateUsingLanelet2Map(autoware_msgs::LaneArra
     ROS_DEBUG_STREAM("matched waypoint_gid and lanelet_id: " << item.first << " " << item.second);
   }
 
-  insertPointWithinCrossRoad(intersects, lane_array);
+  insertPointWithinCrossRoad(lane_array);
 
   // Add steering state attribute from lanelet map.
   for (auto& lane : lane_array.lanes)
@@ -442,9 +448,9 @@ void DecisionMakerNode::setWaypointStateUsingLanelet2Map(autoware_msgs::LaneArra
               if (amathutils::getIntersect(lane.waypoints.at(wp_idx).pose.pose.position,
                                            lane.waypoints.at(wp_idx + 1).pose.pose.position, bp, fp, &intersect_point))
               {
-                double dist_front =
+                const double dist_front =
                     amathutils::find_distance(intersect_point, lane.waypoints.at(wp_idx + 1).pose.pose.position);
-                double dist_back =
+                const double dist_back =
                     amathutils::find_distance(intersect_point, lane.waypoints.at(wp_idx).pose.pose.position);
                 int target_wp_idx = wp_idx;
                 if (dist_front < dist_back)
@@ -457,7 +463,7 @@ void DecisionMakerNode::setWaypointStateUsingLanelet2Map(autoware_msgs::LaneArra
               }
             }
             // if insert_stop_line_wp param is set to True (default: True)
-            // inserts a new waypoint more accurately where the waypoints and stopline intersects
+            // inserts a new waypoint more accurately where the waypoints and stopline intersects_
             else
             {
               center_point.x = (bp.x + fp.x) / 2;
@@ -474,6 +480,9 @@ void DecisionMakerNode::setWaypointStateUsingLanelet2Map(autoware_msgs::LaneArra
                   (wp.pose.pose.position.z + lane.waypoints.at(wp_idx + 1).pose.pose.position.z) / 2;
               wp.twist.twist.linear.x =
                   (wp.twist.twist.linear.x + lane.waypoints.at(wp_idx + 1).twist.twist.linear.x) / 2;
+
+              // label wp with its stopline id
+              wp.stop_line_id = stopline.id();
 
               ROS_INFO("Inserting stopline_interpolation_wp: #%zu(%f, %f, %f)\n", wp_idx + 1, interpolation_point.x,
                        interpolation_point.y, interpolation_point.z);
@@ -648,6 +657,104 @@ void DecisionMakerNode::callbackFromLanelet2Map(const autoware_lanelet2_msgs::Ma
   routing_graph_ = lanelet::routing::RoutingGraph::build(*lanelet_map_, *traffic_rules);
   setEventFlag("lanelet2_map_loaded", true);
   ROS_INFO("Loaded lanelet2 map");
+}
+
+void DecisionMakerNode::callbackFromDetection(const autoware_msgs::DetectedObjectArray& msg)
+{
+  tf2_ros::Buffer tfBuffer;
+  tf2_ros::TransformListener tfListener(tfBuffer);
+  geometry_msgs::TransformStamped tf_local2global;
+  geometry_msgs::Pose obj_global_pose;
+  std::string local_frame = msg.header.frame_id;
+  const std::string global_frame = "map";
+
+  if (current_status_.stopline_waypoint != -1)
+  {
+    const int max_num_of_tries = 3;
+    int num_of_tries = 0;
+    while (1)
+    {
+      try
+      {
+        tf_local2global = tfBuffer.lookupTransform(global_frame, local_frame, ros::Time(0), ros::Duration(1.0));
+        break;
+      }
+      catch (tf::TransformException ex)
+      {
+        ROS_ERROR("%s", ex.what());
+        if (++num_of_tries == max_num_of_tries)
+        {
+          ROS_ERROR("Transform retry attempt reached max_num_of_tries! Resetting stopline_safety_timer");
+          current_status_.stopline_safety_timer = ros::Time::now().toSec();
+          return;
+        }
+      }
+    }
+
+    for (auto& intersect : intersects_)
+    {
+      if (intersect.id != current_status_.stopline_intersect_id)
+      {
+        continue;
+      }
+
+      int detect_total_count = 0;
+      for (auto& stop : intersect.stops)
+      {
+        int detect_count = 0;
+
+        for (const auto& obj : msg.objects)
+        {
+          int num_of_tries_obj = 0;
+          while (1)
+          {
+            try
+            {
+              tf2::doTransform(obj.pose, obj_global_pose, tf_local2global);
+              break;
+            }
+            catch (tf::TransformException ex)
+            {
+              ROS_ERROR("%s", ex.what());
+              if (++num_of_tries_obj == max_num_of_tries)
+              {
+                ROS_ERROR("Transform retry attempt reached max_num_of_tries! Resetting stopline_safety_timer");
+                current_status_.stopline_safety_timer = ros::Time::now().toSec();
+                return;
+              }
+            }
+          }
+
+          // find distance between each detected obj and stop zone
+          const double obj_dist = amathutils::find_distance(stop.stop_point, obj_global_pose.position);
+          // if distance is closer than predefined distance, not safe to enter intersection
+          if (obj_dist <= stopline_detect_dist_)
+          {
+            ++detect_count;
+          }
+        }
+
+        ROS_DEBUG("current intersection: %d | (%f , %f) | stop_idx: %d, stop.id %d, is_safe %d, detect_count: %d",
+                  current_status_.stopline_intersect_id, stop.stop_point.x, stop.stop_point.y,
+                  current_status_.found_stopsign_idx, stop.stopline_id, stop.is_safe, detect_count);
+
+        if (detect_count == 0)
+        {
+          stop.is_safe = true;
+        }
+        else
+        {
+          stop.is_safe = false;
+          ++detect_total_count;
+        }
+      }
+
+      if (detect_total_count != 0)
+      {
+        current_status_.stopline_safety_timer = ros::Time::now().toSec();
+      }
+    }
+  }
 }
 
 }  // namespace decision_maker

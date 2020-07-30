@@ -20,6 +20,9 @@
   <arg name="sim_mode" default="false" />
   <arg name="use_ll2" default="false" />
   <arg name="insert_stop_line_wp" default="true" />
+  <arg name="stopline_detect_dist" default="10.0" doc="maximum distance radius from stopline's center point to detect for objects" />
+  <arg name="stopline_wait_duration" default="3.0" doc="stopline wait time duration in seconds before proceeding" />
+  <arg name="stopline_min_safety_duration" default="1.0" doc="minimum time needed with no objects detected at stop areas to determine the intersection safe" />
 
   <node pkg="decision_maker" type="decision_maker_node" name="decision_maker" output="screen">
     <param name="state_vehicle_file_name" value="$(find decision_maker)/$(arg state_vehicle_file_name)" />
@@ -42,5 +45,8 @@
     <param name="sim_mode" value="$(arg sim_mode)" />
     <param name="use_ll2" value="$(arg use_ll2)" />
     <param name="insert_stop_line_wp" value="$(arg insert_stop_line_wp)" />
+    <param name="stopline_detect_dist" value="$(arg stopline_detect_dist)" />
+    <param name="stopline_wait_duration" value="$(arg stopline_wait_duration)" />
+    <param name="stopline_min_safety_duration" value="$(arg stopline_min_safety_duration)" />
   </node>
 </launch>
