@@ -99,11 +99,11 @@ std::pair<uint8_t, int> DecisionMakerNode::getStopSignStateFromWaypoint(void)
   }
 
   // reset previous stop sign waypoint
-  if (current_status_.finalwaypoints.waypoints.at(1).gid > current_status_.prev_stopped_wpidx ||
-      (unsigned int)(current_status_.prev_stopped_wpidx - current_status_.finalwaypoints.waypoints.at(1).gid) >
+  if (current_status_.finalwaypoints.waypoints.at(1).gid > current_status_.curr_stopped_idx ||
+      (unsigned int)(current_status_.curr_stopped_idx - current_status_.finalwaypoints.waypoints.at(1).gid) >
           stopline_reset_count_)
   {
-    current_status_.prev_stopped_wpidx = -1;
+    current_status_.curr_stopped_idx = -1;
   }
 
   // start from index 1 since index 0 holds ego-vehicle's current pose.
@@ -114,7 +114,7 @@ std::pair<uint8_t, int> DecisionMakerNode::getStopSignStateFromWaypoint(void)
 
     if (current_wpt.wpstate.stop_state != autoware_msgs::WaypointState::NULLSTATE)
     {
-      if (current_status_.prev_stopped_wpidx != current_wpt.gid)
+      if (current_status_.curr_stopped_idx != current_wpt.gid)
       {
         ret.first = current_wpt.wpstate.stop_state;
         ret.second = current_wpt.gid;
@@ -192,9 +192,11 @@ void DecisionMakerNode::updateStopState(cstring_t& state_name, int status)
     {
       switch (get_stopsign.first)
       {
+        // conditional release of stop
         case autoware_msgs::WaypointState::TYPE_STOPLINE:
           tryNextState("found_stopline");
           break;
+        // manual release of stop
         case autoware_msgs::WaypointState::TYPE_STOP:
           tryNextState("found_reserved_stop");
           break;
@@ -219,35 +221,112 @@ void DecisionMakerNode::updateStopState(cstring_t& state_name, int status)
 
 void DecisionMakerNode::updateStoplineState(cstring_t& state_name, int status)
 {
-  publishStoplineWaypointIdx(current_status_.found_stopsign_idx);
-  /* wait for clearing risk*/
-
-  static bool timerflag = false;
-  static ros::Timer stopping_timer;
-
-  if (fabs(current_status_.velocity) <= stopped_vel_ && !timerflag &&
-      current_status_.stopline_waypoint != -1 &&
-      (current_status_.stopline_waypoint + current_status_.closest_waypoint) == current_status_.found_stopsign_idx)
+  // do not publish previously stopped stopline
+  if (current_status_.found_stopsign_idx != current_status_.prev_stopsign_idx)
   {
-    stopping_timer = nh_.createTimer(
-      ros::Duration(0.5),
-      [&](const ros::TimerEvent&)
-      {
-        timerflag = false;
-        current_status_.prev_stopped_wpidx = current_status_.found_stopsign_idx;
-        current_status_.found_stopsign_idx = -1;
+    publishStoplineWaypointIdx(current_status_.found_stopsign_idx);
+  }
 
-        if (current_status_.ordered_stop_idx != -1)
+  // only run this once when approaching an intersection
+  if (stopline_init_flag_
+    && current_status_.prev_stopsign_idx != current_status_.found_stopsign_idx
+    && current_status_.found_stopsign_idx != -1)
+  {
+    int stop_line_id = -1;
+    current_status_.stopline_intersect_id = -1;
+    // grab upcoming waypoint's stopline id
+    for (const auto& wp : current_status_.finalwaypoints.waypoints)
+    {
+      if (wp.gid == current_status_.found_stopsign_idx)
+      {
+        stop_line_id = wp.stop_line_id;
+        break;
+      }
+    }
+    // set is_safe flag to true as no need to check safety of its own stop area
+    for (auto& intersect : intersects_)
+    {
+      for (auto& stop : intersect.stops)
+      {
+        if (stop.stopline_id == stop_line_id)
         {
-          tryNextState("received_stop_order");
+          stop.is_safe = true;
+          current_status_.stopline_intersect_id = intersect.id;
+          break;
         }
-        else
-        {
-          tryNextState("clear");
-        }
-      },  // NOLINT
-      this, true);
-    timerflag = true;
+      }
+    }
+    stopline_init_flag_ = false;
+  }
+
+  if (fabs(current_status_.velocity) <= stopped_vel_
+      // vehicle speed is lower than threshold set to determine stopped velocity
+      && current_status_.stopline_waypoint != -1
+      // if the stopline is still the route
+      && (current_status_.stopline_waypoint + current_status_.closest_waypoint) == current_status_.found_stopsign_idx)
+      // wp of approaching stopline + wp traveled = wp's gid/lid of stopline
+  {
+    // start timer once
+    if (!stopline_start_timer_flag_)
+    {
+      start_timer_ = ros::Time::now();
+      stopline_start_timer_flag_ = true;
+      current_status_.stopline_safety_timer = ros::Time::now().toSec();
+    }
+    ros::Duration tdiff = ros::Time::now() - start_timer_;
+
+    // if timer reaches seconds defined by stopline_wait_duration_
+    if (tdiff.toSec() > stopline_wait_duration_)
+    {
+      stopline_timer_flag_ = true;
+    }
+
+    for (const auto& intersect : intersects_)
+    {
+      // count time as long as the intersection is clear
+      if ((ros::Time::now().toSec() - current_status_.stopline_safety_timer) < stopline_min_safety_duration_)
+      {
+        stopline_clear_flag_ = false;
+      }
+      else
+      {
+        stopline_clear_flag_ = true;
+      }
+    }
+
+    // waiting time for stopline_timer_flag_
+    if (!stopline_timer_flag_)
+    {
+      ROS_INFO("Wait for %f seconds... Calculated time diff: %f \n", stopline_wait_duration_, tdiff.toSec());
+    }
+    // waiting for clearance of objects at stop areas
+    if (!stopline_clear_flag_)
+    {
+      ROS_INFO("Objects detected in stop areas. Not safe to enter! [ safety_timer: %f / %f ]",
+        (ros::Time::now().toSec() - current_status_.stopline_safety_timer), stopline_min_safety_duration_);
+    }
+
+    // if timer reaches time in seconds defined by stopline_wait_duration_
+    // and passes safety_timer defined by stopline_min_safety_duration_
+    if (stopline_timer_flag_ && stopline_clear_flag_)
+    {
+      if (current_status_.ordered_stop_idx != -1)
+      {
+        tryNextState("received_stop_order");
+      }
+      else
+      {
+        ROS_INFO("Intersection clear! Proceed");
+        tryNextState("clear");
+      }
+      // remember the stopsign id which the ego vehicle previously stopped at
+      current_status_.prev_stopsign_idx = current_status_.found_stopsign_idx;
+      // reset all flags
+      stopline_start_timer_flag_ = false;
+      stopline_timer_flag_ = false;
+      stopline_clear_flag_ = false;
+      stopline_init_flag_ = true;
+    }
   }
 }
 
@@ -277,7 +356,7 @@ void DecisionMakerNode::updateReservedStopState(cstring_t& state_name, int statu
 }
 void DecisionMakerNode::exitReservedStopState(cstring_t& state_name, int status)
 {
-  current_status_.prev_stopped_wpidx = current_status_.found_stopsign_idx;
+  current_status_.curr_stopped_idx = current_status_.found_stopsign_idx;
   current_status_.found_stopsign_idx = -1;
 }
 

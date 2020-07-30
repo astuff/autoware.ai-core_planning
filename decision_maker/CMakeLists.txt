@@ -16,9 +16,11 @@ find_package(
   roslint
   state_machine_lib
   std_msgs
-  tf
+  tf2
+  tf2_ros
   vector_map
   vector_map_msgs
+  visualization_msgs
 )
 
 catkin_package()

@@ -56,7 +56,10 @@ DecisionMakerNode::DecisionMakerNode()
   stopped_vel_(0.1),
   stopline_reset_count_(20),
   sim_mode_(false),
-  use_lanelet_map_(false)
+  use_lanelet_map_(false),
+  stopline_detect_dist_(10.0),
+  stopline_wait_duration_(3.0),
+  stopline_min_safety_duration_(1.0)
 {
   std::string file_name_mission;
   std::string file_name_vehicle;
@@ -84,8 +87,11 @@ DecisionMakerNode::DecisionMakerNode()
   private_nh_.getParam("stopline_reset_count", stopline_reset_count_);
   private_nh_.getParam("sim_mode", sim_mode_);
   private_nh_.getParam("use_ll2", use_lanelet_map_);
+  private_nh_.getParam("stopline_detect_dist", stopline_detect_dist_);
+  private_nh_.getParam("stopline_wait_duration", stopline_wait_duration_);
+  private_nh_.getParam("stopline_min_safety_duration", stopline_min_safety_duration_);
 
-  current_status_.prev_stopped_wpidx = -1;
+  current_status_.curr_stopped_idx = -1;
   goal_threshold_vel_ = amathutils::kmph2mps(goal_threshold_vel_kmph);
   stopped_vel_ = amathutils::kmph2mps(stopped_vel_kmph);
 
@@ -116,6 +122,7 @@ void DecisionMakerNode::update(void)
     ctx_behavior->onUpdate();
   if (ctx_motion)
     ctx_motion->onUpdate();
+  displayStopZone();
 }
 
 void DecisionMakerNode::run(void)

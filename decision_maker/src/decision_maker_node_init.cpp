@@ -17,6 +17,10 @@
 #include <algorithm>
 #include <vector>
 
+#include <lanelet2_extension/utility/message_conversion.h>
+#include <lanelet2_extension/utility/query.h>
+#include <lanelet2_extension/utility/utilities.h>
+
 namespace decision_maker
 {
 
@@ -272,6 +276,8 @@ void DecisionMakerNode::createSubscriber(void)
     nh_.subscribe("config/decision_maker", 3, &DecisionMakerNode::callbackFromConfig, this);
   Subs["state_cmd"] = nh_.subscribe("state_cmd", 1, &DecisionMakerNode::callbackFromStateCmd, this);
   Subs["vehicle_engage"] = nh_.subscribe("vehicle/engage", 1, &DecisionMakerNode::callbackFromEngage, this);
+  Subs["detection/lidar_detector/objects"] =
+    nh_.subscribe("detection/lidar_detector/objects", 1, &DecisionMakerNode::callbackFromDetection, this);
   Subs["current_velocity"] =
     nh_.subscribe("current_velocity", 1, &DecisionMakerNode::callbackFromCurrentVelocity, this);
   Subs["obstacle_waypoint"] =
@@ -302,6 +308,7 @@ void DecisionMakerNode::createPublisher(void)
   Pubs["state_overlay"] = private_nh_.advertise<jsk_rviz_plugins::OverlayText>("state_overlay", 1);
   Pubs["available_transition"] = private_nh_.advertise<std_msgs::String>("available_transition", 1, true);
   Pubs["stop_cmd_location"] = private_nh_.advertise<autoware_msgs::VehicleLocation>("stop_location", 1, true);
+  Pubs["stop_zone"] = private_nh_.advertise<visualization_msgs::Marker>("stop_zone_visualizer", 1);
 
   // for debug
   Pubs["target_velocity_array"] = nh_.advertise<std_msgs::Float64MultiArray>("target_velocity_array", 1);
@@ -339,6 +346,7 @@ void DecisionMakerNode::initROS()
 
 void DecisionMakerNode::initLaneletMap(void)
 {
+  int _index = 0;
   bool ll2_map_loaded = false;
   while (!ll2_map_loaded && ros::ok())
   {
@@ -346,6 +354,181 @@ void DecisionMakerNode::initLaneletMap(void)
     ROS_INFO_THROTTLE(2, "Waiting for lanelet map topic");
     ll2_map_loaded = isEventFlagTrue("lanelet2_map_loaded");
     ros::Duration(0.1).sleep();
+  }
+
+  if (ll2_map_loaded)
+  {
+    lanelet::ConstLanelets all_lanelets = lanelet::utils::query::laneletLayer(lanelet_map_);
+    for (const auto& lanelet : all_lanelets)
+    {
+      geometry_msgs::Point _prev_point;
+      CrossRoadArea intersect;
+      intersect.id = _index++;
+
+      double x_avg = 0.0, x_min = 0.0, x_max = 0.0;
+      double y_avg = 0.0, y_min = 0.0, y_max = 0.0;
+      double z_avg = 0.0;
+      int points_count = 0;
+
+      // skip lanelets that do not belong to an intersection
+      if (lanelet.attributeOr("turn_direction", "empty") == "empty")
+      {
+        continue;
+      }
+
+      std::vector<geometry_msgs::Point> _points;
+      // for every point that makes up a line (rightBound)
+      for (const auto& rb_pt : lanelet.rightBound())
+      {
+        geometry_msgs::Point _point;
+        _point.x = rb_pt.x();
+        _point.y = rb_pt.y();
+        _point.z = rb_pt.z();
+
+        // skip repeated points
+        if (_prev_point.x == _point.x && _prev_point.y == _point.y)
+        {
+          continue;
+        }
+
+        _prev_point = _point;
+        points_count++;
+        _points.push_back(_point);
+
+        // calc a centroid point and about intersects_ size
+        x_avg += _point.x;
+        y_avg += _point.y;
+        z_avg += _point.z;
+        x_min = (x_min == 0.0) ? _point.x : std::min(_point.x, x_min);
+        x_max = (x_max == 0.0) ? _point.x : std::max(_point.x, x_max);
+        y_min = (y_min == 0.0) ? _point.y : std::min(_point.y, y_min);
+        y_max = (y_max == 0.0) ? _point.y : std::max(_point.y, y_max);
+      }  // points iter
+
+      // for every point that makes up a line (leftBound)
+      for (const auto& lb_pt : lanelet.leftBound())
+      {
+        geometry_msgs::Point _point;
+        _point.x = lb_pt.x();
+        _point.y = lb_pt.y();
+        _point.z = lb_pt.z();
+
+        // skip repeated points
+        if (_prev_point.x == _point.x && _prev_point.y == _point.y)
+        {
+          continue;
+        }
+
+        _prev_point = _point;
+        points_count++;
+        _points.push_back(_point);
+
+        // calc a centroid point and about intersects_ size
+        x_avg += _point.x;
+        y_avg += _point.y;
+        z_avg += _point.z;
+        x_min = (x_min == 0.0) ? _point.x : std::min(_point.x, x_min);
+        x_max = (x_max == 0.0) ? _point.x : std::max(_point.x, x_max);
+        y_min = (y_min == 0.0) ? _point.y : std::min(_point.y, y_min);
+        y_max = (y_max == 0.0) ? _point.y : std::max(_point.y, y_max);
+      }  // points iter
+
+      // accumulate all points from both rightBound and leftBound
+      for (const auto& pt : _points)
+      {
+        intersect.points.push_back(pt);
+      }
+
+      // centroid point of intersection bbox
+      intersect.bbox.pose.position.x = x_avg / static_cast<double>(points_count);
+      intersect.bbox.pose.position.y = y_avg / static_cast<double>(points_count);
+      intersect.bbox.pose.position.z = z_avg / static_cast<double>(points_count);
+      // dimensions of intersection bbox
+      intersect.bbox.dimensions.x = x_max - x_min;
+      intersect.bbox.dimensions.y = y_max - y_min;
+      intersect.bbox.dimensions.z = 2;
+      intersect.bbox.label = 1;
+
+      // combine lanelets that belong to a same intersection
+      bool first_instance = true;
+      for (auto& intersect_itr : intersects_)
+      {
+        double _dist = amathutils::find_distance(intersect.bbox.pose.position, intersect_itr.bbox.pose.position);
+        // if distance between one intersection and another is less than 20.0 m, consider it the same intersection
+        if (_dist < 20.0)
+        {
+          intersect_itr.bbox.pose.position.x =
+            (intersect_itr.bbox.pose.position.x + intersect.bbox.pose.position.x) / 2.0;
+          intersect_itr.bbox.pose.position.y =
+            (intersect_itr.bbox.pose.position.y + intersect.bbox.pose.position.y) / 2.0;
+          intersect_itr.bbox.pose.position.z =
+            (intersect_itr.bbox.pose.position.z + intersect.bbox.pose.position.z) / 2.0;
+          // TODO(Steven): fix xy_min and xy_max as they're not calculated correctly but not currently used
+
+          first_instance = false;
+          break;
+        }
+      }
+
+      if (first_instance)
+      {
+        intersects_.push_back(intersect);
+      }
+    }
+
+    // stop zone
+    lanelet::ConstLineStrings3d stoplines = lanelet::utils::query::getStopSignStopLines(all_lanelets);
+
+    // find all points where lanes intersect with stoplines
+    for (const auto& stopline : stoplines)
+    {
+      // skip invalid stopline (line without point)
+      if (stopline.empty())
+      {
+        continue;
+      }
+
+      geometry_msgs::Point stop_bp = lanelet::utils::conversion::toGeomMsgPt(stopline.front());
+      geometry_msgs::Point stop_fp = lanelet::utils::conversion::toGeomMsgPt(stopline.back());
+
+      geometry_msgs::Point stop_zone;
+      stop_zone.x = (stop_bp.x + stop_fp.x) / 2.0;
+      stop_zone.y = (stop_bp.y + stop_fp.y) / 2.0;
+      stop_zone.z = (stop_bp.z + stop_fp.z) / 2.0;
+      ROS_DEBUG("[stop_zone] (%f , %f)\n", stop_zone.x, stop_zone.y);
+
+      double dist = DBL_MAX;
+      int intersection_id = -1;
+      // find intersection which stopline belongs to by finding the smallest distance
+      // between the stopline and intersection center point
+      for (const auto& intersect : intersects_)
+      {
+        double d = amathutils::distanceFromSegment(stop_bp, stop_fp, intersect.bbox.pose.position);
+        if (dist > d)
+        {
+          dist = d;
+          intersection_id = intersect.id;
+        }
+      }
+      if (intersection_id != -1)
+      {
+        for (auto& intersect : intersects_)
+        {
+          if (intersect.id == intersection_id)
+          {
+            CrossRoadArea::StopArea stop_area;
+            stop_area.stopline_id = stopline.id();
+            stop_area.stop_point = stop_zone;
+            stop_area.is_safe = false;
+            intersect.stops.push_back(stop_area);
+            ROS_DEBUG("intersection_id: %d | stopline.id: %d | stop_point: (%f , %f)\n",
+                           intersection_id, static_cast<int>(stopline.id()), stop_zone.x, stop_zone.y);
+          }
+        }
+      }
+    }
+
+    displayStopZoneInit();
   }
 }
 
@@ -361,11 +544,11 @@ void DecisionMakerNode::initVectorMap(void)
     ROS_INFO("Subscribing to vector map topics.");
 
     g_vmap.subscribe(nh_, Category::POINT | Category::LINE | Category::VECTOR | Category::AREA |
-      Category::STOP_LINE | Category::ROAD_SIGN | Category::CROSS_ROAD | Category::WHITE_LINE,
+      Category::STOP_LINE | Category::ROAD_SIGN | Category::CROSS_ROAD | Category::WHITE_LINE | Category::LANE ,
       ros::Duration(1.0));
 
     vmap_loaded =
-        g_vmap.hasSubscribed(Category::POINT | Category::LINE | Category::AREA |
+        g_vmap.hasSubscribed(Category::POINT | Category::LINE | Category::LANE | Category::AREA |
                               Category::STOP_LINE | Category::ROAD_SIGN);
 
     if (!vmap_loaded)
@@ -388,13 +571,14 @@ void DecisionMakerNode::initVectorMap(void)
     return;
   }
 
+  // for every cross_road (intersection)
   for (const auto& cross_road : crossroads)
   {
     geometry_msgs::Point _prev_point;
     Area area = g_vmap.findByKey(Key<Area>(cross_road.aid));
-    CrossRoadArea carea;
-    carea.id = _index++;
-    carea.area_id = area.aid;
+    CrossRoadArea intersect;
+    intersect.id = _index++;
+    intersect.area_id = area.aid;
 
     double x_avg = 0.0, x_min = 0.0, x_max = 0.0;
     double y_avg = 0.0, y_min = 0.0, y_max = 0.0;
@@ -408,11 +592,19 @@ void DecisionMakerNode::initVectorMap(void)
           return area.slid <= line.lid && line.lid <= area.elid;
         }
       );  // NOLINT
+
+    if ( lines.size() < 3 )
+    {
+      continue;
+    }
+
+    // for every line that makes up an intersection
     for (const auto& line : lines)
     {
       const std::vector<Point> points =
         g_vmap.findByFilter([&line](const Point& point) { return line.bpid == point.pid; });  // NOLINT
 
+      // for every point that makes up a line
       for (const auto& point : points)
       {
         geometry_msgs::Point _point;
@@ -420,14 +612,17 @@ void DecisionMakerNode::initVectorMap(void)
         _point.y = point.bx;
         _point.z = point.h;
 
+        // skip repeated points
         if (_prev_point.x == _point.x && _prev_point.y == _point.y)
+        {
           continue;
+        }
 
         _prev_point = _point;
         points_count++;
-        carea.points.push_back(_point);
+        intersect.points.push_back(_point);
 
-        // calc a centroid point and about intersects size
+        // calc a centroid point and about intersects_ size
         x_avg += _point.x;
         y_avg += _point.y;
         x_min = (x_min == 0.0) ? _point.x : std::min(_point.x, x_min);
@@ -436,16 +631,114 @@ void DecisionMakerNode::initVectorMap(void)
         y_max = (y_max == 0.0) ? _point.y : std::max(_point.y, y_max);
         z = _point.z;
       }  // points iter
-    }    // line iter
+    }  // line iter
 
-    carea.bbox.pose.position.x = x_avg / static_cast<double>(points_count) * 1.5;  // expanding rate
-    carea.bbox.pose.position.y = y_avg / static_cast<double>(points_count) * 1.5;
-    carea.bbox.pose.position.z = z;
-    carea.bbox.dimensions.x = x_max - x_min;
-    carea.bbox.dimensions.y = y_max - y_min;
-    carea.bbox.dimensions.z = 2;
-    carea.bbox.label = 1;
-    intersects.push_back(carea);
+    // centroid point of intersection bbox
+    intersect.bbox.pose.position.x = x_avg / static_cast<double>(points_count);
+    intersect.bbox.pose.position.y = y_avg / static_cast<double>(points_count);
+    intersect.bbox.pose.position.z = z;
+    // dimensions of intersection bbox
+    intersect.bbox.dimensions.x = x_max - x_min;
+    intersect.bbox.dimensions.y = y_max - y_min;
+    intersect.bbox.dimensions.z = 2;
+    intersect.bbox.label = 1;
+    intersects_.push_back(intersect);
   }
+
+  // stop zone
+  std::vector<StopLine> stoplines = g_vmap.findByFilter(
+    [&](const StopLine& stopline)
+    {
+      return ((g_vmap.findByKey(Key<RoadSign>(stopline.signid)).type &
+        (autoware_msgs::WaypointState::TYPE_STOP | autoware_msgs::WaypointState::TYPE_STOPLINE)) != 0);
+    }
+  );  // NOLINT
+  const std::vector<Lane> lanes = g_vmap.findByFilter(
+    [](const Lane& lane) { return true; });  // NOLINT
+
+  // find all points where lanes intersect with stoplines
+  for (const auto& stopline : stoplines)
+  {
+    if (stopline.linkid == 0)
+    {
+      continue;
+    }
+
+    // store points that make each stop line
+    geometry_msgs::Point stop_bp =
+        VMPoint2GeoPoint(g_vmap.findByKey(Key<Point>(g_vmap.findByKey(Key<Line>(stopline.lid)).bpid)));
+    geometry_msgs::Point stop_fp =
+        VMPoint2GeoPoint(g_vmap.findByKey(Key<Point>(g_vmap.findByKey(Key<Line>(stopline.lid)).fpid)));
+    geometry_msgs::Point stop_zone;
+
+    // find lane that intersects_ through the stopline
+    for (const auto& lane : lanes)
+    {
+      geometry_msgs::Point lane_bp = VMPoint2GeoPoint(g_vmap.findByKey(Key<Point>(lane.bnid)));
+      geometry_msgs::Point lane_fp = VMPoint2GeoPoint(g_vmap.findByKey(Key<Point>(lane.fnid)));
+
+      if (amathutils::isIntersectLine(lane_bp, lane_fp, stop_bp, stop_fp))
+      {
+        geometry_msgs::Point int_point;
+        amathutils::getIntersect(lane_bp, lane_fp, stop_bp, stop_fp, &int_point);
+        stop_zone = int_point;
+        break;
+      }
+    }
+
+    double dist = DBL_MAX;
+    int intersection_id = -1;
+    // find intersection which stopline belongs to by finding the smallest distance
+    // between the stopline and intersection center point
+    for (const auto& intersect : intersects_)
+    {
+      double d = amathutils::distanceFromSegment(stop_bp, stop_fp, intersect.bbox.pose.position);
+      if (dist > d)
+      {
+        dist = d;
+        intersection_id = intersect.id;
+      }
+    }
+    if (intersection_id != -1)
+    {
+      for (auto& intersect : intersects_)
+      {
+        if (intersect.id == intersection_id)
+        {
+          CrossRoadArea::StopArea stop_area;
+          stop_area.stopline_id = stopline.id;
+          stop_area.stop_point = stop_zone;
+          stop_area.is_safe = false;
+          intersect.stops.push_back(stop_area);
+          ROS_DEBUG("intersection_id: %d | stopline.id: %d | stopline.linkid: %d | stop_point: (%f , %f)\n",
+                           intersection_id, stopline.id, stopline.linkid, stop_zone.x, stop_zone.y);
+        }
+      }
+    }
+  }
+
+  displayStopZoneInit();
+}
+
+void DecisionMakerNode::displayStopZoneInit()
+{
+  // stop_zone_marker_ to visualize clearance at each intersection's stop zones
+  stop_zone_marker_.header.frame_id = "/map";
+  stop_zone_marker_.header.stamp = ros::Time();
+  stop_zone_marker_.ns = "stop_zone";
+  stop_zone_marker_.id = 0;
+  stop_zone_marker_.type = visualization_msgs::Marker::SPHERE_LIST;
+  stop_zone_marker_.action = visualization_msgs::Marker::ADD;
+
+  // set scale and color
+  const double scale = 3.7;
+  stop_zone_marker_.scale.x = scale;
+  stop_zone_marker_.scale.y = scale;
+  stop_zone_marker_.scale.z = scale;
+  stop_zone_marker_.color.a = 0.5;
+  stop_zone_marker_.color.r = 1.0;
+  stop_zone_marker_.color.g = 0.0;
+  stop_zone_marker_.color.b = 0.0;
+  stop_zone_marker_.frame_locked = true;
 }
 }  // namespace decision_maker

@@ -31,6 +31,7 @@
 #include <autoware_config_msgs/ConfigDecisionMaker.h>
 #include <autoware_lanelet2_msgs/MapBin.h>
 #include <autoware_msgs/CloudClusterArray.h>
+#include <autoware_msgs/DetectedObjectArray.h>
 #include <autoware_msgs/Lane.h>
 #include <autoware_msgs/LaneArray.h>
 #include <autoware_msgs/State.h>
@@ -51,10 +52,12 @@
 #include <std_msgs/Int32.h>
 #include <std_msgs/String.h>
 #include <visualization_msgs/MarkerArray.h>
+#include <visualization_msgs/Marker.h>
 
 #include <amathutils_lib/amathutils.hpp>
 #include <state_machine_lib/state_context.hpp>
-#include <tf/transform_listener.h>
+#include <tf2_ros/transform_listener.h>
+#include <geometry_msgs/TransformStamped.h>
 #include <vector_map/vector_map.h>
 
 #include <lanelet2_io/Io.h>
@@ -67,11 +70,13 @@ using vector_map::Category;
 using vector_map::CrossRoad;
 using vector_map::Key;
 using vector_map::Line;
+using vector_map::Lane;
 using vector_map::Point;
 using vector_map::RoadSign;
 using vector_map::StopLine;
 using vector_map::VectorMap;
 using vector_map::WhiteLine;
+using vector_map::LaneArray;
 
 using cstring_t = const std::string;
 
@@ -147,11 +152,20 @@ struct AutowareStatus
   // other waypoint indexes, this one is computed by decision_maker itself based on
   // waypoints subscribed from /final_waypoints.
   int found_stopsign_idx = -1;
-  int prev_stopped_wpidx = -1;
+  int curr_stopped_idx = -1;
+
+  // It holds the gid of the stop sign waypoint the vehicle has just crossed
+  int prev_stopsign_idx = -1;
 
   // It holds ordered stop waypoint's gid published by other nodes.
   int ordered_stop_idx = -1;
   int prev_ordered_idx = -1;
+
+  // It holds approaching intersection's id
+  int stopline_intersect_id = -1;
+
+  // It keeps track of how long intersection is clear for
+  double stopline_safety_timer = 0.0;
 };
 
 class DecisionMakerNode
@@ -170,7 +184,7 @@ private:
 
   AutowareStatus current_status_;
 
-  std::vector<CrossRoadArea> intersects;
+  std::vector<CrossRoadArea> intersects_;
 
   lanelet::LaneletMapPtr lanelet_map_;
   lanelet::routing::RoutingGraphPtr routing_graph_;
@@ -192,6 +206,17 @@ private:
   int stopline_reset_count_;
   bool sim_mode_;
   bool use_lanelet_map_;
+  double stopline_detect_dist_;
+  double stopline_wait_duration_;
+  double stopline_min_safety_duration_;
+  visualization_msgs::Marker stop_zone_marker_;
+
+  bool stopline_start_timer_flag_ = false;   // true after timer starts
+  bool stopline_timer_flag_ = false;         // true when waiting time is up
+  bool stopline_clear_flag_ = false;         // true when all stop areas are safe/clear
+  bool stopline_init_flag_ = true;           // flag to perform only once
+
+  ros::Time start_timer_;
 
   // initialization method
   void initROS();
@@ -208,12 +233,14 @@ private:
   void publishOperatorHelpMessage(const cstring_t& message);
   void publishLampCmd(const E_Lamp& status);
   void publishStoplineWaypointIdx(const int wp_idx);
+  void displayStopZoneInit();
+  void displayStopZone();
 
   /* decision */
   void tryNextState(cstring_t& key);
   bool isArrivedGoal(void) const;
   bool isLocalizationConvergence(const geometry_msgs::Point& _current_point) const;
-  void insertPointWithinCrossRoad(const std::vector<CrossRoadArea>& _intersects, autoware_msgs::LaneArray& lane_array);
+  void insertPointWithinCrossRoad(autoware_msgs::LaneArray& lane_array);
   void setWaypointStateUsingVectorMap(autoware_msgs::LaneArray& lane_array);
   void setWaypointStateUsingLanelet2Map(autoware_msgs::LaneArray& lane_array);
   bool drivingMissionCheck(void);
@@ -351,6 +378,7 @@ private:
   void callbackFromStopOrder(const std_msgs::Int32& msg);
   void callbackFromClearOrder(const std_msgs::Int32& msg);
   void callbackFromLanelet2Map(const autoware_lanelet2_msgs::MapBin::ConstPtr& msg);
+  void callbackFromDetection(const autoware_msgs::DetectedObjectArray& msg);
 
   void setEventFlag(cstring_t& key, const bool& value)
   {

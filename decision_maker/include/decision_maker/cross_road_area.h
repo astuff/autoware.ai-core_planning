@@ -19,6 +19,7 @@
 
 #include <autoware_msgs/Lane.h>
 #include <geometry_msgs/Point.h>
+#include <vector_map_msgs/StopLine.h>
 #include <jsk_recognition_msgs/BoundingBox.h>
 
 namespace decision_maker
@@ -35,6 +36,14 @@ public:
   jsk_recognition_msgs::BoundingBox bbox;
   std::vector<autoware_msgs::Lane> insideLanes;
   std::vector<geometry_msgs::Point> insideWaypoint_points;
+
+  struct StopArea
+  {
+    int stopline_id{-1};
+    geometry_msgs::Point stop_point{};
+    bool is_safe{false};
+  };
+  std::vector<StopArea> stops;
 
 private:
   static std::vector<geometry_msgs::Point> convhull(const CrossRoadArea* _TargetArea);

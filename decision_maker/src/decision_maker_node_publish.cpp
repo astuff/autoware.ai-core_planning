@@ -142,4 +142,18 @@ void DecisionMakerNode::publishStoplineWaypointIdx(const int wp_idx)
   Pubs["state/stopline_wpidx"].publish(msg);
 }
 
+void DecisionMakerNode::displayStopZone()
+{
+  for (const auto& intersect : intersects_)
+  {
+    for (const auto& stop_area : intersect.stops)
+    {
+      if (!stop_area.is_safe)
+        stop_zone_marker_.points.push_back(stop_area.stop_point);
+    }
+  }
+  Pubs["stop_zone"].publish(stop_zone_marker_);
+  stop_zone_marker_.points.clear();
+}
+
 }  // namespace decision_maker
