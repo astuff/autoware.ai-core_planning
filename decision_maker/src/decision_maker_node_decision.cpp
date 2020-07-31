@@ -17,6 +17,7 @@
 #include <cstdio>
 #include <numeric>
 #include <vector>
+#include <utility>
 
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
@@ -83,6 +84,83 @@ double DecisionMakerNode::calcRequiredDistForStop(void) const
   const double distance_to_target = (free_running_distance + braking_distance) * 2 /* safety margin*/;
 
   return distance_to_target;
+}
+
+// Assign unique gid and lid for each waypoint in the received based_lane_array, and
+// append additional waypoint state information based on the map format. At the same,
+// the function return the distance and the heading difference in between the
+// ego-vehicle and the closest waypoint in a std::pair.
+std::pair<double, double> DecisionMakerNode::prepareActiveLaneArray()
+{
+  int gid = 0;
+  for (auto& lane : current_status_.based_lane_array.lanes)
+  {
+    int lid = 0;
+    for (auto& wp : lane.waypoints)
+    {
+      wp.wpstate.aid = 0;
+      wp.wpstate.steering_state = autoware_msgs::WaypointState::NULLSTATE;
+      wp.wpstate.accel_state = autoware_msgs::WaypointState::NULLSTATE;
+      if (wp.wpstate.stop_state != autoware_msgs::WaypointState::TYPE_STOPLINE &&
+          wp.wpstate.stop_state != autoware_msgs::WaypointState::TYPE_STOP)
+      {
+        wp.wpstate.stop_state = autoware_msgs::WaypointState::NULLSTATE;
+      }
+
+      wp.wpstate.lanechange_state = autoware_msgs::WaypointState::NULLSTATE;
+      wp.wpstate.event_state = 0;
+      wp.gid = gid++;
+      wp.lid = lid++;
+
+      if (!isEventFlagTrue("received_back_state_waypoint") && wp.twist.twist.linear.x < 0.0)
+      {
+        setEventFlag("received_back_state_waypoint", true);
+        publishOperatorHelpMessage("Received back waypoint.");
+      }
+    }
+  }
+
+  // set waypoint state and insert interpolated waypoint for stopline if necessary
+  if (!ignore_map_)
+  {
+    if (use_lanelet_map_)
+    {
+      setWaypointStateUsingLanelet2Map(current_status_.based_lane_array);
+    }
+    else
+    {
+      setWaypointStateUsingVectorMap(current_status_.based_lane_array);
+    }
+  }
+
+  // re-index since setWaypointStateUsingLanelet2Map() or setWaypointStateUsingVectorMap()
+  // may change the size of waypoints.
+  gid = 0;
+  double min_dist = DBL_MAX;
+  double heading_diff = DBL_MAX;
+  geometry_msgs::Pose closest_wp_pose;
+  for (auto& lane : current_status_.based_lane_array.lanes)
+  {
+    int lid = 0;
+    for (auto& wp : lane.waypoints)
+    {
+      wp.gid = gid++;
+      wp.lid = lid++;
+      const double dist = amathutils::find_distance(current_status_.pose.position, wp.pose.pose.position);
+      if (min_dist > dist)
+      {
+        min_dist = dist;
+        closest_wp_pose = wp.pose.pose;
+      }
+    }
+  }
+
+  if (min_dist != DBL_MAX)
+  {
+    heading_diff = std::abs(amathutils::calcPosesAngleDiffDeg(current_status_.pose, closest_wp_pose));
+  }
+
+  return std::pair<double, double>(min_dist, heading_diff);
 }
 
 bool DecisionMakerNode::isLocalizationConvergence(const geometry_msgs::Point& _current_point) const

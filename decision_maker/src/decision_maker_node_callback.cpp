@@ -88,8 +88,8 @@ void DecisionMakerNode::callbackFromConfig(const autoware_config_msgs::ConfigDec
   auto_mission_change_ = msg.auto_mission_change;
   use_fms_ = msg.use_fms;
   lookahead_distance_ = static_cast<double>(msg.num_of_steer_behind);
-  change_threshold_dist_ = msg.change_threshold_dist;
-  change_threshold_angle_ = msg.change_threshold_angle;
+  mission_change_threshold_dist_ = msg.change_threshold_dist;
+  mission_change_threshold_angle_ = msg.change_threshold_angle;
   goal_threshold_dist_ = msg.goal_threshold_dist;
   goal_threshold_vel_ = amathutils::kmph2mps(msg.goal_threshold_vel);
   stopped_vel_ = amathutils::kmph2mps(msg.stopped_vel);
@@ -507,75 +507,16 @@ void DecisionMakerNode::setWaypointStateUsingLanelet2Map(autoware_msgs::LaneArra
 bool DecisionMakerNode::drivingMissionCheck()
 {
   publishOperatorHelpMessage("Received new mission, checking now...");
-  setEventFlag("received_back_state_waypoint", false);
 
-  int gid = 0;
-  for (auto& lane : current_status_.based_lane_array.lanes)
-  {
-    int lid = 0;
-    for (auto& wp : lane.waypoints)
-    {
-      wp.wpstate.aid = 0;
-      wp.wpstate.accel_state = autoware_msgs::WaypointState::NULLSTATE;
-      if (wp.wpstate.stop_state != autoware_msgs::WaypointState::TYPE_STOPLINE &&
-          wp.wpstate.stop_state != autoware_msgs::WaypointState::TYPE_STOP)
-        wp.wpstate.stop_state = autoware_msgs::WaypointState::NULLSTATE;
-      wp.wpstate.lanechange_state = autoware_msgs::WaypointState::NULLSTATE;
-      wp.wpstate.event_state = 0;
-      wp.gid = gid++;
-      wp.lid = lid++;
-      if (!isEventFlagTrue("received_back_state_waypoint") && wp.twist.twist.linear.x < 0.0)
-      {
-        setEventFlag("received_back_state_waypoint", true);
-        publishOperatorHelpMessage("Received back waypoint.");
-      }
-    }
-  }
-
-  // waypoint-state set and insert interpolation waypoint for stopline
-  if (!ignore_map_)
-  {
-    if (use_lanelet_map_)
-    {
-      setWaypointStateUsingLanelet2Map(current_status_.based_lane_array);
-    }
-    else
-    {
-      setWaypointStateUsingVectorMap(current_status_.based_lane_array);
-    }
-  }
-
-  // reindexing and calculate new closest_waypoint distance
-  gid = 0;
-  double min_dist = 100;
-  geometry_msgs::Pose nearest_wp_pose;
-  for (auto& lane : current_status_.based_lane_array.lanes)
-  {
-    int lid = 0;
-    std::vector<double> dist_vec;
-    dist_vec.reserve(lane.waypoints.size());
-    for (auto& wp : lane.waypoints)
-    {
-      wp.gid = gid++;
-      wp.lid = lid++;
-      double dst = amathutils::find_distance(current_status_.pose.position, wp.pose.pose.position);
-      if (min_dist > dst)
-      {
-        min_dist = dst;
-        nearest_wp_pose = wp.pose.pose;
-      }
-    }
-  }
-
-  const double angle_diff_degree = std::abs(amathutils::calcPosesAngleDiffDeg(current_status_.pose, nearest_wp_pose));
-  if (min_dist > change_threshold_dist_ || angle_diff_degree > change_threshold_angle_)
+  auto ret = prepareActiveLaneArray();
+  if (ret.first > mission_change_threshold_dist_ || ret.second > mission_change_threshold_angle_)
   {
     return false;
   }
   else
   {
-    current_status_.using_lane_array = current_status_.based_lane_array;
-    Pubs["lane_waypoints_array"].publish(current_status_.using_lane_array);
+    current_status_.active_lane_array = current_status_.based_lane_array;
+    Pubs["lane_waypoints_array"].publish(current_status_.active_lane_array);
     if (!isSubscriberRegistered("final_waypoints"))
     {
       Subs["final_waypoints"] =
@@ -630,11 +571,11 @@ void DecisionMakerNode::callbackFromStopOrder(const std_msgs::Int32& msg)
 {
   autoware_msgs::VehicleLocation pub_msg;
   pub_msg.header.stamp = ros::Time::now();
-  pub_msg.lane_array_id = current_status_.using_lane_array.id;
+  pub_msg.lane_array_id = current_status_.active_lane_array.id;
   pub_msg.waypoint_index = -1;
 
   if (current_status_.closest_waypoint < msg.data &&
-      msg.data < current_status_.using_lane_array.lanes.back().waypoints.back().gid)
+      msg.data < current_status_.active_lane_array.lanes.back().waypoints.back().gid)
   {
     current_status_.prev_ordered_idx = current_status_.ordered_stop_idx;
     current_status_.ordered_stop_idx = msg.data;
