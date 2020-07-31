@@ -117,11 +117,15 @@ struct AutowareStatus
 {
   std::map<std::string, bool> EventFlags;
 
-  // planning status
-  autoware_msgs::LaneArray using_lane_array;  // with wpstate
+  // It holds lane array received from /based/lane_waypoints_array. After extra
+  // waypoint state information is added in mission check state, it is copied
+  // over to active_lane_array.
   autoware_msgs::LaneArray based_lane_array;
 
-  // It holds waypoints published in /final_waypoints by velocity_set.
+  // It holds lane array published to /lane_waypoints_array.
+  autoware_msgs::LaneArray active_lane_array;
+
+  // It holds waypoints received from /final_waypoints.
   autoware_msgs::Lane finalwaypoints;
 
   // It holds gid of the closest waypoint from the ego-vehicle.
@@ -198,8 +202,8 @@ private:
   bool insert_stop_line_wp_;
   double lookahead_distance_;
   double lookahead_distance_lane_change_signal_;
-  double change_threshold_dist_;
-  double change_threshold_angle_;
+  double mission_change_threshold_dist_;
+  double mission_change_threshold_angle_;
   double goal_threshold_dist_;  // in meter
   double goal_threshold_vel_;  // in m/s
   double stopped_vel_;  // in m/s
@@ -243,6 +247,7 @@ private:
   void insertPointWithinCrossRoad(autoware_msgs::LaneArray& lane_array);
   void setWaypointStateUsingVectorMap(autoware_msgs::LaneArray& lane_array);
   void setWaypointStateUsingLanelet2Map(autoware_msgs::LaneArray& lane_array);
+  std::pair<double, double> prepareActiveLaneArray();
   bool drivingMissionCheck(void);
 
   double calcIntersectWayAngle(const autoware_msgs::Lane& laneinArea);

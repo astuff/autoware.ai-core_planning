@@ -55,58 +55,10 @@ void DecisionMakerNode::entryMissionCheckState(cstring_t& state_name, int status
   publishOperatorHelpMessage("Received mission, checking now...");
   setEventFlag("received_back_state_waypoint", false);
 
-  int gid = 0;
-  for (auto& lane : current_status_.based_lane_array.lanes)
-  {
-    int lid = 0;
-    for (auto& wp : lane.waypoints)
-    {
-      wp.wpstate.aid = 0;
-      wp.wpstate.steering_state = autoware_msgs::WaypointState::NULLSTATE;
-      wp.wpstate.accel_state = autoware_msgs::WaypointState::NULLSTATE;
-      if (wp.wpstate.stop_state != autoware_msgs::WaypointState::TYPE_STOPLINE &&
-          wp.wpstate.stop_state != autoware_msgs::WaypointState::TYPE_STOP)
-      {
-        wp.wpstate.stop_state = autoware_msgs::WaypointState::NULLSTATE;
-      }
+  prepareActiveLaneArray();
 
-      wp.wpstate.lanechange_state = autoware_msgs::WaypointState::NULLSTATE;
-      wp.wpstate.event_state = 0;
-      wp.gid = gid++;
-      wp.lid = lid++;
-
-      if (!isEventFlagTrue("received_back_state_waypoint") && wp.twist.twist.linear.x < 0.0)
-      {
-        setEventFlag("received_back_state_waypoint", true);
-        publishOperatorHelpMessage("Received back waypoint.");
-      }
-    }
-  }
-
-  // waypoint-state set and insert interpolation waypoint for stopline
-  if (use_lanelet_map_)
-  {
-    setWaypointStateUsingLanelet2Map(current_status_.based_lane_array);
-  }
-  else
-  {
-    setWaypointStateUsingVectorMap(current_status_.based_lane_array);
-  }
-
-  // indexing
-  gid = 0;
-  for (auto& lane : current_status_.based_lane_array.lanes)
-  {
-    int lid = 0;
-    for (auto& wp : lane.waypoints)
-    {
-      wp.gid = gid++;
-      wp.lid = lid++;
-    }
-  }
-
-  current_status_.using_lane_array = current_status_.based_lane_array;
-  Pubs["lane_waypoints_array"].publish(current_status_.using_lane_array);
+  current_status_.active_lane_array = current_status_.based_lane_array;
+  Pubs["lane_waypoints_array"].publish(current_status_.active_lane_array);
   if (!isSubscriberRegistered("final_waypoints"))
   {
     Subs["final_waypoints"] =
