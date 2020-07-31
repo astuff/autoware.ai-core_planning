@@ -87,7 +87,7 @@ void DecisionMakerNode::callbackFromConfig(const autoware_config_msgs::ConfigDec
   auto_engage_ = msg.auto_engage;
   auto_mission_change_ = msg.auto_mission_change;
   use_fms_ = msg.use_fms;
-  param_num_of_steer_behind_ = msg.num_of_steer_behind;
+  lookahead_distance_ = static_cast<double>(msg.num_of_steer_behind);
   change_threshold_dist_ = msg.change_threshold_dist;
   change_threshold_angle_ = msg.change_threshold_angle;
   goal_threshold_dist_ = msg.goal_threshold_dist;
@@ -211,7 +211,7 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
             {
               double dist = amathutils::find_distance(lane.waypoints.at(wp_idx).pose.pose.position,
                                                 lane.waypoints.at(wp_idx-i).pose.pose.position);
-              if (dist >= distance_before_lane_change_signal_)
+              if (dist >= lookahead_distance_lane_change_signal_)
                 break;
             }
 

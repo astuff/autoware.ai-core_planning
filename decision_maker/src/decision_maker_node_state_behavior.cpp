@@ -43,25 +43,19 @@ void DecisionMakerNode::updateMovingState(cstring_t& state_name, int status)
 
 uint8_t DecisionMakerNode::getSteeringStateFromWaypoint(void)
 {
-  static const double distance_to_target = param_num_of_steer_behind_;
-  static const size_t ignore_idx = 0;
-
   double distance = 0.0;
   geometry_msgs::Pose prev_pose = current_status_.pose;
-  uint8_t state = 0;
+  uint8_t state = autoware_msgs::WaypointState::NULLSTATE;
 
-  if (ignore_idx > current_status_.finalwaypoints.waypoints.size())
-  {
-    return 0;
-  }
-
-  for (unsigned int idx = 0; idx < current_status_.finalwaypoints.waypoints.size() - 1; idx++)
+  // final waypoints index 0 holds ego-vehicle's current pose.
+  for (unsigned int idx = 1; idx < current_status_.finalwaypoints.waypoints.size() - 1; idx++)
   {
     distance += amathutils::find_distance(prev_pose, current_status_.finalwaypoints.waypoints.at(idx).pose.pose);
 
     state = current_status_.finalwaypoints.waypoints.at(idx).wpstate.steering_state;
 
-    if (state && (state != autoware_msgs::WaypointState::STR_STRAIGHT || distance >= distance_to_target))
+    if (state != autoware_msgs::WaypointState::NULLSTATE &&
+        (state != autoware_msgs::WaypointState::STR_STRAIGHT || distance >= lookahead_distance_))
     {
       break;
     }
@@ -69,27 +63,21 @@ uint8_t DecisionMakerNode::getSteeringStateFromWaypoint(void)
   }
   return state;
 }
+
 uint8_t DecisionMakerNode::getEventStateFromWaypoint(void)
 {
-  static const double distance_to_target = param_num_of_steer_behind_;
-  static const size_t ignore_idx = 0;
-
   double distance = 0.0;
   geometry_msgs::Pose prev_pose = current_status_.pose;
-  uint8_t state = 0;
+  uint8_t state = autoware_msgs::WaypointState::NULLSTATE;
 
-  if (ignore_idx > current_status_.finalwaypoints.waypoints.size())
-  {
-    return 0;
-  }
-
-  for (unsigned int idx = 0; idx < current_status_.finalwaypoints.waypoints.size() - 1; idx++)
+  // final waypoints index 0 holds ego-vehicle's current pose.
+  for (unsigned int idx = 1; idx < current_status_.finalwaypoints.waypoints.size() - 1; idx++)
   {
     distance += amathutils::find_distance(prev_pose, current_status_.finalwaypoints.waypoints.at(idx).pose.pose);
 
     state = current_status_.finalwaypoints.waypoints.at(idx).wpstate.event_state;
 
-    if (state || distance >= distance_to_target)
+    if (state != autoware_msgs::WaypointState::NULLSTATE || distance >= lookahead_distance_)
     {
       break;
     }
