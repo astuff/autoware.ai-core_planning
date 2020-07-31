@@ -196,8 +196,8 @@ private:
   bool use_fms_;
   bool ignore_map_;
   bool insert_stop_line_wp_;
-  int param_num_of_steer_behind_;
-  int distance_before_lane_change_signal_;
+  double lookahead_distance_;
+  double lookahead_distance_lane_change_signal_;
   double change_threshold_dist_;
   double change_threshold_angle_;
   double goal_threshold_dist_;  // in meter

@@ -9,10 +9,10 @@
   <arg name="auto_mission_change" default="false" />
   <arg name="use_fms" default="false" />
   <arg name="ignore_map" default="false" />
-  <arg name="param_num_of_steer_behind" default="30" />
-  <arg name="distance_before_lane_change_signal" default="30" />
-  <arg name="change_threshold_dist" default="1.0" />
-  <arg name="change_threshold_angle" default="15" />
+  <arg name="param_num_of_steer_behind" default="30.0" doc="look ahead distance to check waypoint state" />
+  <arg name="distance_before_lane_change_signal" default="30.0" doc="look ahead distance to switch on turn signal during lane change" />
+  <arg name="change_threshold_dist" default="1.0" doc="distance threshold to allow mission change" />
+  <arg name="change_threshold_angle" default="15.0" doc="heading difference threshold to allow mission change" />
   <arg name="goal_threshold_dist" default="3.0" />
   <arg name="goal_threshold_vel" default="0.1" />
   <arg name="stopped_vel" default="0.1" />
