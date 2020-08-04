@@ -48,7 +48,6 @@ DecisionMakerNode::DecisionMakerNode()
   ignore_map_(false),
   insert_stop_line_wp_(true),
   lookahead_distance_(30.0),
-  lookahead_distance_lane_change_signal_(30.0),
   mission_change_threshold_dist_(1.0),
   mission_change_threshold_angle_(15),
   goal_threshold_dist_(3.0),
@@ -78,7 +77,6 @@ DecisionMakerNode::DecisionMakerNode()
   private_nh_.getParam("ignore_map", ignore_map_);
   private_nh_.getParam("insert_stop_line_wp", insert_stop_line_wp_);
   private_nh_.getParam("param_num_of_steer_behind", lookahead_distance_);
-  private_nh_.getParam("distance_before_lane_change_signal", lookahead_distance_lane_change_signal_);
   private_nh_.getParam("change_threshold_dist", mission_change_threshold_dist_);
   private_nh_.getParam("change_threshold_angle", mission_change_threshold_angle_);
   private_nh_.getParam("goal_threshold_dist", goal_threshold_dist_);

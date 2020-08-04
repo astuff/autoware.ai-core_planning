@@ -10,7 +10,6 @@
   <arg name="use_fms" default="false" />
   <arg name="ignore_map" default="false" />
   <arg name="param_num_of_steer_behind" default="30.0" doc="look ahead distance to check waypoint state" />
-  <arg name="distance_before_lane_change_signal" default="30.0" doc="look ahead distance to switch on turn signal during lane change" />
   <arg name="change_threshold_dist" default="1.0" doc="distance threshold to allow mission change" />
   <arg name="change_threshold_angle" default="15.0" doc="heading difference threshold to allow mission change" />
   <arg name="goal_threshold_dist" default="3.0" />
@@ -35,7 +34,6 @@
     <param name="use_fms" value="$(arg use_fms)" />
     <param name="ignore_map" value="$(arg ignore_map)" />
     <param name="param_num_of_steer_behind" value="$(arg param_num_of_steer_behind)" />
-    <param name="distance_before_lane_change_signal" value="$(arg distance_before_lane_change_signal)"/>
     <param name="change_threshold_dist" value="$(arg change_threshold_dist)" />
     <param name="change_threshold_angle" value="$(arg change_threshold_angle)" />
     <param name="goal_threshold_dist" value="$(arg goal_threshold_dist)" />
