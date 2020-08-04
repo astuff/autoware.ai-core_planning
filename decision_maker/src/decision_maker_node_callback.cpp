@@ -19,6 +19,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <utility>
 
 #include <ros/ros.h>
 
@@ -205,16 +206,6 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
           if (amathutils::isIntersectLine(lane.waypoints.at(wp_idx).pose.pose.position,
                                         lane.waypoints.at(wp_idx + 1).pose.pose.position, bp, fp))
           {
-            unsigned int i;
-            // turn signal should trigger 30 meters before the lane change
-            for (i = 1; i < wp_idx; i++)
-            {
-              double dist = amathutils::find_distance(lane.waypoints.at(wp_idx).pose.pose.position,
-                                                lane.waypoints.at(wp_idx-i).pose.pose.position);
-              if (dist >= lookahead_distance_lane_change_signal_)
-                break;
-            }
-
             int steering_state;
             if (amathutils::isPointLeftFromLine(lane.waypoints.at(wp_idx).pose.pose.position, bp, fp) > 0)
             {
@@ -229,20 +220,13 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
               ROS_INFO("Left turn signal");
             }
 
-            ROS_INFO("From: #%zu(%f, %f, %f)", wp_idx - i,
-                      lane.waypoints.at(wp_idx - i).pose.pose.position.x,
-                      lane.waypoints.at(wp_idx - i).pose.pose.position.y,
-                      lane.waypoints.at(wp_idx - i).pose.pose.position.z);
-            ROS_INFO("To:   #%zu(%f, %f, %f)", wp_idx + 1,
-                      lane.waypoints.at(wp_idx + 1).pose.pose.position.x,
-                      lane.waypoints.at(wp_idx + 1).pose.pose.position.y,
-                      lane.waypoints.at(wp_idx + 1).pose.pose.position.z);
+            ROS_INFO("at: #%zu(%f, %f, %f)", wp_idx,
+                      lane.waypoints.at(wp_idx).pose.pose.position.x,
+                      lane.waypoints.at(wp_idx).pose.pose.position.y,
+                      lane.waypoints.at(wp_idx).pose.pose.position.z);
 
-            // Insert right turn steering_state up to where waypoints crosses the lane
-            for (unsigned int j = 0; j <= i + 1; j++)
-            {
-              lane.waypoints.at(wp_idx - j + 1).wpstate.steering_state = steering_state;
-            }
+            // Insert correct turn steering_state at where waypoints crosses the lane
+            lane.waypoints.at(wp_idx).wpstate.steering_state = steering_state;
           }
         }
       }
@@ -394,6 +378,88 @@ void DecisionMakerNode::setWaypointStateUsingLanelet2Map(autoware_msgs::LaneArra
   }
 
   lanelet::ConstLanelets all_lanelets = lanelet::utils::query::laneletLayer(lanelet_map_);
+
+  // Lane Changes - waypoints crossing whitelines
+  lanelet::ConstLanelets roads = lanelet::utils::query::roadLanelets(all_lanelets);
+
+  for (auto& lane : lane_array.lanes)
+  {
+    for (size_t wp_idx = 0; wp_idx < lane.waypoints.size() - 1; wp_idx++)
+    {
+      // Skip waypoints in intersections
+      if (lane.waypoints.at(wp_idx).wpstate.aid == 0)
+      {
+        for (const auto& road : roads)
+        {
+          // skip lanelets that belong to an intersection
+          if (road.attributeOr("turn_direction", "empty") != "empty")
+          {
+            continue;
+          }
+          // skip lanelets with fewer than two points
+          if (road.leftBound().size() < 2 | road.rightBound().size() < 2)
+          {
+            continue;
+          }
+
+          std::vector<std::pair<int, geometry_msgs::Point>> pts;
+
+          for (const auto& pt : road.leftBound())
+          {
+            // label 1 for leftBound points
+            pts.push_back(make_pair(1, lanelet::utils::conversion::toGeomMsgPt(pt)));
+          }
+          for (const auto& pt : road.rightBound())
+          {
+            // label 2 for leftBound points
+            pts.push_back(make_pair(2, lanelet::utils::conversion::toGeomMsgPt(pt)));
+          }
+
+          std::pair<int, geometry_msgs::Point> prev_pt;
+          for (auto& pt : pts)
+          {
+            // skip first to load first pair for isIntersectLine function
+            if (prev_pt.first == 0)
+            {
+              prev_pt = pt;
+              continue;
+            }
+            // pairs only if the two points belong to the same bound
+            if (pt.first == prev_pt.first)
+            {
+              if (amathutils::isIntersectLine(
+                  lane.waypoints.at(wp_idx).pose.pose.position, lane.waypoints.at(wp_idx + 1).pose.pose.position,
+                  prev_pt.second, pt.second))
+              {
+                int steering_state;
+                if (amathutils::isPointLeftFromLine(lane.waypoints.at(wp_idx).pose.pose.position,
+                                                    prev_pt.second, pt.second) > 0)
+                {
+                  // If waypoint starts from left side of the whiteline, trigger right turn signal
+                  steering_state = autoware_msgs::WaypointState::STR_RIGHT;
+                  ROS_INFO("Right turn signal");
+                }
+                else
+                {
+                  // If waypoint starts from right side of the whiteline, trigger left turn signal
+                  steering_state = autoware_msgs::WaypointState::STR_LEFT;
+                  ROS_INFO("Left turn signal");
+                }
+                ROS_INFO("From: #%zu(%f, %f, %f)", wp_idx,
+                          lane.waypoints.at(wp_idx).pose.pose.position.x,
+                          lane.waypoints.at(wp_idx).pose.pose.position.y,
+                          lane.waypoints.at(wp_idx).pose.pose.position.z);
+
+                // Insert correct turn steering_state at where waypoints crosses the lane
+                lane.waypoints.at(wp_idx).wpstate.steering_state = steering_state;
+              }
+            }
+            prev_pt = pt;
+          }
+        }
+      }
+    }
+  }
 
   // Get stop lines associated with stop signs (not traffic lights)
   lanelet::ConstLineStrings3d stoplines = lanelet::utils::query::getStopSignStopLines(all_lanelets);

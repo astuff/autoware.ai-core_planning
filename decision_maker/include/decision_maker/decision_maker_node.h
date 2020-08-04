@@ -201,7 +201,6 @@ private:
   bool ignore_map_;
   bool insert_stop_line_wp_;
   double lookahead_distance_;
-  double lookahead_distance_lane_change_signal_;
   double mission_change_threshold_dist_;
   double mission_change_threshold_angle_;
   double goal_threshold_dist_;  // in meter
