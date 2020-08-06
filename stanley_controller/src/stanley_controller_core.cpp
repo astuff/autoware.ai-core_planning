@@ -1,9 +1,9 @@
 /*
  * Copyright 2020 AutonomouStuff, LLC. All Rights Reserved.
- * 
+ *
  * For license details, see:
  * https://autonomoustuff.com/software-license-agreement/
- * 
+ *
  * Copyright 2018-2019 Autoware Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -80,6 +80,7 @@ StanleyController::StanleyController()
   pnh_.param("in_vehicle_status_name", in_vehicle_status, std::string("/vehicle_status"));
   pub_twist_cmd_ = nh_.advertise<geometry_msgs::TwistStamped>(out_twist, 1);
   pub_steer_vel_ctrl_cmd_ = nh_.advertise<autoware_msgs::ControlCommandStamped>(out_ctrl_cmd, 1);
+  pub_lat_err_ = nh_.advertise<std_msgs::Float32>("/lateral_tracking_error", 1);
   sub_ref_path_ = nh_.subscribe(in_waypoints, 1, &StanleyController::callbackRefPath, this);
   sub_pose_ = nh_.subscribe(in_selfpose, 1, &StanleyController::callbackPose, this);
   sub_vehicle_status_ = nh_.subscribe(in_vehicle_status, 1, &StanleyController::callbackVehicleStatus, this);
@@ -179,6 +180,11 @@ bool StanleyController::updateStateError()
 
   ref_pt_velocity_ = ref_traj_.vx[nearest_traj_index_];
   ref_pt_curvature_ = ref_traj_.k[nearest_traj_index_];
+
+  // Publish lateral tracking error
+  std_msgs::Float32 lat_err_msg;
+  lat_err_msg.data = lateral_error_;
+  pub_lat_err_.publish(lat_err_msg);
 
   return true;
 }

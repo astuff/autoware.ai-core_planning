@@ -1,9 +1,9 @@
 /*
  * Copyright 2020 AutonomouStuff, LLC. All Rights Reserved.
- * 
+ *
  * For license details, see:
  * https://autonomoustuff.com/software-license-agreement/
- * 
+ *
  * Copyright 2018-2019 Autoware Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -80,6 +80,7 @@ private:
   ros::NodeHandle pnh_;                    //!< @brief private ros node handle
   ros::Publisher pub_steer_vel_ctrl_cmd_;  //!< @brief topic publisher for control command
   ros::Publisher pub_twist_cmd_;           //!< @brief topic publisher for twist command
+  ros::Publisher pub_lat_err_;             //!< @brief topic publisher for lateral error
   ros::Subscriber sub_ref_path_;           //!< @brief topic subscriber for reference waypoints
   ros::Subscriber sub_pose_;               //!< @brief subscriber for current pose
   ros::Subscriber sub_vehicle_status_;     //!< @brief subscriber for currrent vehicle status
