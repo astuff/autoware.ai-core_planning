@@ -85,14 +85,25 @@ void PurePursuitNode::initForROS()
 
 void PurePursuitNode::run()
 {
-  ROS_INFO_STREAM("pure pursuit start");
   ros::Rate loop_rate(update_rate_);
   while (ros::ok())
   {
     ros::spinOnce();
     if (!is_pose_set_ || !is_waypoint_set_ || !is_velocity_set_)
     {
-      ROS_WARN("Necessary topics are not subscribed yet ... ");
+      if (!is_pose_set_)
+      {
+        ROS_WARN_THROTTLE(5, "Waiting for current_pose topic ...");
+      }
+      if (!is_waypoint_set_)
+      {
+        ROS_WARN_THROTTLE(5, "Waiting for final_waypoints topic ...");
+      }
+      if (!is_velocity_set_)
+      {
+        ROS_WARN_THROTTLE(5, "Waiting for current_velocity topic ...");
+      }
+
       loop_rate.sleep();
       continue;
     }
@@ -146,7 +157,7 @@ void PurePursuitNode::publishControlCommands(const bool& can_get_curvature, cons
   }
   else
   {
-    ROS_WARN("[pure_pursuit] control command interface is not appropriate");
+    ROS_WARN_THROTTLE(2, "Control command interface is not appropriate");
   }
 }
 
