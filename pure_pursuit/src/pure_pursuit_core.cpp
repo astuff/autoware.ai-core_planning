@@ -79,7 +79,7 @@ void PurePursuitNode::initForROS()
   pub14_ = nh_.advertise<visualization_msgs::Marker>("line_point_mark", 0);
   pub15_ = nh_.advertise<visualization_msgs::Marker>("trajectory_circle_mark", 0);
   pub16_ = nh_.advertise<std_msgs::Float32>("angular_gravity", 0);
-  pub17_ = nh_.advertise<std_msgs::Float32>("deviation_of_current_position", 0);
+  pub17_ = nh_.advertise<std_msgs::Float32>("lateral_tracking_error", 0);
   pub18_ = nh_.advertise<visualization_msgs::Marker>("expanded_waypoints_mark", 0);
 }
 
