@@ -36,13 +36,13 @@ bool MPCUtils::interp1d(const T1& index, const T2& values, const double& ref, do
   *ret = 0.0;
   if (!(static_cast<int>(index.size()) == static_cast<int>(values.size())))
   {
-    ROS_WARN("index and values must have same size, return false. size : idx = %d, values = %d\n",
+    ROS_DEBUG("index and values must have same size, return false. size : idx = %d, values = %d",
              static_cast<int>(index.size()), static_cast<int>(values.size()));
     return false;
   }
   if (index.size() == 1)
   {
-    ROS_WARN("index size is 1, too short. return false.\n");
+    ROS_DEBUG("index size is 1, too short. return false.");
     return false;
   }
   unsigned int end = index.size() - 1;
@@ -61,7 +61,7 @@ bool MPCUtils::interp1d(const T1& index, const T2& values, const double& ref, do
   {
     if (!(index[i] > index[i - 1]))
     {
-      ROS_WARN("index must be monotonically increasing, return false. index[%d] = %f, but index[%d] = %f\n", i,
+      ROS_DEBUG("index must be monotonically increasing, return false. index[%d] = %f, but index[%d] = %f", i,
                index[i], i - 1, index[i - 1]);
       return false;
     }
@@ -81,14 +81,14 @@ bool MPCUtils::interp1d(const T1& index, const T2& values, const double& ref, do
 bool MPCUtils::interp1dMPCTraj(const std::vector<double>& index, const MPCTrajectory& values,
                                const std::vector<double>& ref_time, MPCTrajectory* const ret)
 {
-  if (!(index.size() == values.size()))
+  if (index.size() != values.size())
   {
-    ROS_WARN("index and values must have same size, return false.\n");
+    ROS_DEBUG("index and values must have same size, return false.");
     return false;
   }
   if (index.size() == 1)
   {
-    ROS_WARN("index size is 1, too short. return false.\n");
+    ROS_DEBUG("index size is 1, too short. return false.");
     return false;
   }
 
@@ -96,7 +96,7 @@ bool MPCUtils::interp1dMPCTraj(const std::vector<double>& index, const MPCTrajec
   {
     if (!(index[i] > index[i - 1]))
     {
-      ROS_WARN("index must be monotonically increasing, return false. index[%d] = %f, but index[%d] = %f\n", i,
+      ROS_DEBUG("index must be monotonically increasing, return false. index[%d] = %f, but index[%d] = %f", i,
                index[i], i - 1, index[i - 1]);
       return false;
     }
@@ -106,8 +106,8 @@ bool MPCUtils::interp1dMPCTraj(const std::vector<double>& index, const MPCTrajec
   {
     if (!(ref_time[i] > ref_time[i - 1]))
     {
-      ROS_WARN("reference point must be monotonically increasing, return false. ref_time[%d] = %f, but ref_time[%d] = "
-               "%f\n",
+      ROS_DEBUG("reference point must be monotonically increasing, return false. ref_time[%d] = %f, but ref_time[%d] = "
+               "%f",
                i, ref_time[i], i - 1, ref_time[i - 1]);
       return false;
     }
@@ -257,7 +257,7 @@ void MPCUtils::convertWaypointsToMPCTrajWithResample(const autoware_msgs::Lane& 
   {
     if (ref_index[i] < ref_index[i - 1])
     {
-      ROS_ERROR("[convertWaypointsToMPCTrajWithResample] resampling index must be monotonically increasing. idx[%d] = "
+      ROS_DEBUG("[convertWaypointsToMPCTrajWithResample] resampling index must be monotonically increasing. idx[%d] = "
                 "%f, idx[%d+1] = %f",
                 i, ref_index[i], i, ref_index[i + 1]);
       return;
@@ -347,7 +347,7 @@ bool MPCUtils::calcNearestPose(const MPCTrajectory& traj, const geometry_msgs::P
   }
   if (nearest_index_tmp == -1)
   {
-    ROS_WARN("[calcNearestPose] yaw error is over PI/3 for all waypoints. no closest waypoint found.");
+    ROS_DEBUG("[calcNearestPose] yaw error is over PI/3 for all waypoints. no closest waypoint found.");
     return false;
   }
 
@@ -367,7 +367,7 @@ bool MPCUtils::calcNearestPoseInterp(const MPCTrajectory& traj, const geometry_m
 {
   if (traj.size() == 0)
   {
-    ROS_WARN("[calcNearestPoseInterp] trajectory size is zero");
+    ROS_DEBUG("[calcNearestPoseInterp] trajectory size is zero");
     return false;
   }
   const double my_x = self_pose.position.x;
@@ -396,7 +396,7 @@ bool MPCUtils::calcNearestPoseInterp(const MPCTrajectory& traj, const geometry_m
   }
   if (nearest_index_tmp == -1)
   {
-    ROS_WARN("[calcNearestPoseInterp] yaw error is over PI/3 for all waypoints. no closest waypoint found.");
+    ROS_DEBUG("[calcNearestPoseInterp] yaw error is over PI/3 for all waypoints. no closest waypoint found.");
     return false;
   }
 
@@ -493,7 +493,7 @@ bool MPCUtils::filt_vector(const int num, std::vector<double>* const u)
 {
   if (static_cast<int>(u->size()) < num)
   {
-    ROS_WARN("[MovingAverageFilter] vector size is lower than moving average number");
+    ROS_DEBUG("[MovingAverageFilter] vector size is lower than moving average number");
     return false;
   }
   std::vector<double> filtered_u(u->size());
