@@ -164,7 +164,7 @@ bool StanleyController::updateStateError()
   if (!MPCUtils::calcNearestPoseInterp(ref_traj_, vehicle_status_.pose, &nearest_pose, &nearest_traj_index_, &dist_err,
                                        &heading_error_, &nearest_traj_time_))
   {
-    ROS_WARN("[Stanley] error in calculating nearest pose.");
+    ROS_WARN_THROTTLE(2, "Error in calculating nearest pose.");
     return false;
   };
 
@@ -214,7 +214,7 @@ void StanleyController::callbackRefPath(const autoware_msgs::Lane::ConstPtr& msg
           !MPCUtils::filt_vector(path_filter_moving_ave_num_, &traj.yaw) ||
           !MPCUtils::filt_vector(path_filter_moving_ave_num_, &traj.vx))
       {
-        ROS_WARN("[Stanley] path callback: filtering error. stop filtering");
+        ROS_WARN_THROTTLE(2, "Path callback: filtering error. stop filtering");
         return;
       }
     }
@@ -232,9 +232,10 @@ void StanleyController::callbackRefPath(const autoware_msgs::Lane::ConstPtr& msg
 
   if (!traj.size())
   {
-    ROS_ERROR("[Stanley] path callback: trajectory size is undesired.");
-    ROS_INFO("size: x=%lu, y=%lu, z=%lu, yaw=%lu, v=%lu,k=%lu,t=%lu", traj.x.size(), traj.y.size(), traj.z.size(),
-             traj.yaw.size(), traj.vx.size(), traj.k.size(), traj.relative_time.size());
+    ROS_ERROR_THROTTLE(1, "Path callback: trajectory size is undesired.");
+    ROS_ERROR_THROTTLE(1, "size: x=%lu, y=%lu, z=%lu, yaw=%lu, v=%lu,k=%lu,t=%lu",
+        traj.x.size(), traj.y.size(), traj.z.size(),
+        traj.yaw.size(), traj.vx.size(), traj.k.size(), traj.relative_time.size());
     return;
   }
 
@@ -329,7 +330,7 @@ void StanleyController::publishControlCommands(const double& vel_cmd, const doub
   }
   else
   {
-    ROS_WARN("[Stanley] control command interface is not appropriate");
+    ROS_WARN_THROTTLE(2, "Control command interface is not appropriate");
   }
 }
 
