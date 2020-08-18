@@ -51,7 +51,7 @@ StanleyController::StanleyController()
   pnh_.param("kp_lateral_error", kp_lateral_error_, 1.0);
   pnh_.param("kd_steer", kd_steer_, 0.0);
   pnh_.param("k_soft", k_soft_, 10.0);
-  pnh_.param("preview_windown", preview_window_, 10);
+  pnh_.param("preview_window", preview_window_, 10);
 
   /* vehicle model setup */
   double mass_fl, mass_fr, mass_rl, mass_rr, cf, cr;
