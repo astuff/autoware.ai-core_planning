@@ -275,6 +275,7 @@ void PurePursuitNode::publishDeviationCurrentPosition(const geometry_msgs::Point
 
 void PurePursuitNode::callbackFromCurrentPose(const geometry_msgs::PoseStampedConstPtr& msg)
 {
+  current_pose_ = msg->pose;
   pp_.setCurrentPose(msg);
   is_pose_set_ = true;
 }
@@ -288,7 +289,18 @@ void PurePursuitNode::callbackFromCurrentVelocity(const geometry_msgs::TwistStam
 
 void PurePursuitNode::callbackFromWayPoints(const autoware_msgs::LaneConstPtr& msg)
 {
-  command_linear_velocity_ = (!msg->waypoints.empty()) ? msg->waypoints.at(0).twist.twist.linear.x : 0;
+  // Calculate nearest point
+  if (is_pose_set_)
+  {
+    int closest_waypoint = getClosestWaypoint(*msg, current_pose_);
+
+    if (closest_waypoint != -1)
+    {
+      command_linear_velocity_ = msg->waypoints.at(closest_waypoint).twist.twist.linear.x;
+    }
+  }
+
+  // command_linear_velocity_ = (!msg->waypoints.empty()) ? msg->waypoints.at(0).twist.twist.linear.x : 0;
   if (add_virtual_end_waypoints_)
   {
     const LaneDirection solved_dir = getLaneDirection(*msg);

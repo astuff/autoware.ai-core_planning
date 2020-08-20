@@ -92,6 +92,7 @@ private:
   // the next waypoint must be outside of this threshold.
   double minimum_lookahead_distance_;
   std::string output_interface_;
+  geometry_msgs::Pose current_pose_;
 
   // callbacks
   void callbackFromConfig(const autoware_config_msgs::ConfigWaypointFollowerConstPtr& config);
