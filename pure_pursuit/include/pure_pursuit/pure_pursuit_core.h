@@ -104,6 +104,7 @@ private:
   void initForROS();
 
   // functions
+  void updateCommandVelocity();
   void publishControlCommands(const bool& can_get_curvature, const double& kappa) const;
   void publishTwistStamped(const bool& can_get_curvature, const double& kappa) const;
   void publishCtrlCmdStamped(const bool& can_get_curvature, const double& kappa) const;

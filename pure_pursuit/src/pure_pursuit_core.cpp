@@ -114,6 +114,7 @@ void PurePursuitNode::run()
     double kappa = 0;
     bool can_get_curvature = pp_.canGetCurvature(&kappa);
 
+    updateCommandVelocity();
     publishControlCommands(can_get_curvature, kappa);
     health_checker_ptr_->NODE_ACTIVATE();
     health_checker_ptr_->CHECK_RATE("topic_rate_vehicle_cmd_slow", 8, 5, 1, "topic vehicle_cmd publish rate slow.");
@@ -125,13 +126,13 @@ void PurePursuitNode::run()
         waypoint_follower::generateTrajectoryCircle(pp_.getPoseOfNextTarget(), pp_.getCurrentPose())));
     if (add_virtual_end_waypoints_)
     {
-      pub18_.publish(displayExpandWaypoints(pp_.getCurrentWaypoints(), expand_size_));
+      pub18_.publish(displayExpandWaypoints(pp_.getCurrentWaypoints().waypoints, expand_size_));
     }
     std_msgs::Float32 angular_gravity_msg;
     angular_gravity_msg.data = computeAngularGravity(computeCommandVelocity(), kappa);
     pub16_.publish(angular_gravity_msg);
 
-    publishDeviationCurrentPosition(pp_.getCurrentPose().position, pp_.getCurrentWaypoints());
+    publishDeviationCurrentPosition(pp_.getCurrentPose().position, pp_.getCurrentWaypoints().waypoints);
 
     is_pose_set_ = false;
     is_velocity_set_ = false;
@@ -222,7 +223,7 @@ double PurePursuitNode::computeCommandVelocity() const
 double PurePursuitNode::computeCommandAccel() const
 {
   const geometry_msgs::Pose current_pose = pp_.getCurrentPose();
-  const geometry_msgs::Pose target_pose = pp_.getCurrentWaypoints().at(1).pose.pose;
+  const geometry_msgs::Pose target_pose = pp_.getCurrentWaypoints().waypoints.at(1).pose.pose;
 
   const double delta_d =
       std::hypot(target_pose.position.x - current_pose.position.x, target_pose.position.y - current_pose.position.y);
@@ -287,20 +288,13 @@ void PurePursuitNode::callbackFromCurrentVelocity(const geometry_msgs::TwistStam
   is_velocity_set_ = true;
 }
 
+void PurePursuitNode::updateCommandVelocity()
+{
+  command_linear_velocity_ = pp_.getCommandVelocity();
+}
+
 void PurePursuitNode::callbackFromWayPoints(const autoware_msgs::LaneConstPtr& msg)
 {
-  // Calculate nearest point
-  if (is_pose_set_)
-  {
-    int closest_waypoint = getClosestWaypoint(*msg, current_pose_);
-
-    if (closest_waypoint != -1)
-    {
-      command_linear_velocity_ = msg->waypoints.at(closest_waypoint).twist.twist.linear.x;
-    }
-  }
-
-  // command_linear_velocity_ = (!msg->waypoints.empty()) ? msg->waypoints.at(0).twist.twist.linear.x : 0;
   if (add_virtual_end_waypoints_)
   {
     const LaneDirection solved_dir = getLaneDirection(*msg);
@@ -310,11 +304,11 @@ void PurePursuitNode::callbackFromWayPoints(const autoware_msgs::LaneConstPtr& m
     connectVirtualLastWaypoints(&expanded_lane, direction_);
     expand_size_ += expanded_lane.waypoints.size();
 
-    pp_.setCurrentWaypoints(expanded_lane.waypoints);
+    pp_.setCurrentWaypoints(expanded_lane);
   }
   else
   {
-    pp_.setCurrentWaypoints(msg->waypoints);
+    pp_.setCurrentWaypoints(*msg);
   }
   is_waypoint_set_ = true;
 }
