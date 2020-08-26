@@ -1,4 +1,23 @@
+/*
+ * Copyright 2015-2019 Autoware Foundation. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include <waypoint_planner/velocity_set/libvelocity_set.h>
+
+#include <map>
+#include <vector>
 
 // extract edge points from zebra zone
 std::vector<geometry_msgs::Point> removeNeedlessPoints(std::vector<geometry_msgs::Point> &area_points)
@@ -157,7 +176,6 @@ double CrossWalk::calcCrossWalkWidth(const int &aid) const
       if (line.lid == search_lid)
       {
         area_points.push_back(getPoint(line.bpid));
-        //_points.push_back(area_points.back());///
         search_lid = line.flid;
       }
     }
@@ -261,10 +279,12 @@ int CrossWalk::findClosestCrosswalk(const int closest_waypoint, const autoware_m
   // keep the first crosswalks waypoint index if found
   int closest_crosswalk_waypoint_idx = -1;
   detection_crosswalk_id_ = -1;
-  detection_crosswalk_array_.clear(); // for multiple
+  detection_crosswalk_array_.clear();  // for multiple
 
   // Find crosswalks within search distance
-  for (int wp_idx = closest_waypoint; wp_idx < closest_waypoint + search_distance && wp_idx < (int)lane.waypoints.size(); wp_idx++)
+  for (int wp_idx = closest_waypoint;
+        wp_idx < closest_waypoint + search_distance && wp_idx < static_cast<int>(lane.waypoints.size());
+        wp_idx++)
   {
     geometry_msgs::Point waypoint = lane.waypoints[wp_idx].pose.pose.position;
     waypoint.z = 0.0;  // ignore Z axis
@@ -282,14 +302,15 @@ int CrossWalk::findClosestCrosswalk(const int closest_waypoint, const autoware_m
         p.z = waypoint.z;
         if (calcSquareOfLength(p, waypoint) < find_distance)
         {
-          if (!is_found) {
+          if (!is_found)
+          {
             closest_crosswalk_waypoint_idx = wp_idx;
             detection_crosswalk_id_ = id;
             is_found = true;
           }
           addDetectionCrossWalkIDs(id);
           if (!enable_multiple_crosswalk_detection_)
-          { 
+          {
             return closest_crosswalk_waypoint_idx;
           }
         }

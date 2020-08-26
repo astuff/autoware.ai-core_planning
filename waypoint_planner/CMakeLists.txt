@@ -24,8 +24,8 @@ find_package(
 
 catkin_package()
 
-# TODO add all codes to roslint
-roslint_cpp(src/velocity_set_lanelet2/velocity_set_lanelet2.cpp)
+set(ROSLINT_CPP_OPTS "--filter=-build/c++11,-runtime/references")
+roslint_cpp()
 
 include_directories(
   include

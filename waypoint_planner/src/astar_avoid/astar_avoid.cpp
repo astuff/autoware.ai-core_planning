@@ -16,6 +16,10 @@
 
 #include "waypoint_planner/astar_avoid/astar_avoid.h"
 
+#include <string>
+#include <algorithm>
+#include <vector>
+
 AstarAvoid::AstarAvoid()
   : nh_()
   , private_nh_("~")
@@ -24,9 +28,11 @@ AstarAvoid::AstarAvoid()
   private_nh_.param<double>("update_rate", update_rate_, 10.0);
 
   private_nh_.param<bool>("enable_avoidance", enable_avoidance_, false);
+  private_nh_.param<bool>("use_route_loop", use_route_loop_, false);
   private_nh_.param<double>("avoid_waypoints_velocity", avoid_waypoints_velocity_, 10.0);
   private_nh_.param<double>("avoid_start_velocity", avoid_start_velocity_, 5.0);
   private_nh_.param<double>("replan_interval", replan_interval_, 2.0);
+  private_nh_.param<double>("waypoint_loopsafe_dist_max", waypoint_loopsafe_dist_max_, 5.0);
   private_nh_.param<int>("search_waypoints_size", search_waypoints_size_, 50);
   private_nh_.param<int>("search_waypoints_delta", search_waypoints_delta_, 2);
   private_nh_.param<int>("closest_search_size", closest_search_size_, 30);
@@ -86,7 +92,8 @@ void AstarAvoid::baseWaypointsCallback(const autoware_msgs::Lane& msg)
     if ((t2 - t1).toSec() > 1e-3)
     {
       ROS_INFO("Receive new /base_waypoints, reset waypoint index.");
-      closest_waypoint_index_ = -1; // reset local closest waypoint
+      // reset local closest waypoint
+      closest_waypoint_index_ = -1;
       prev_base_waypoints = base_waypoints_;
     }
   }
@@ -102,7 +109,8 @@ void AstarAvoid::closestWaypointCallback(const std_msgs::Int32& msg)
 {
   if (msg.data == -1)
   {
-    closest_waypoint_index_ = -1; // reset local closest waypoint
+    // reset local closest waypoint
+    closest_waypoint_index_ = -1;
   }
   else
   {
@@ -337,7 +345,8 @@ void AstarAvoid::mergeAvoidWaypoints(const nav_msgs::Path& path, int& end_of_avo
 
   // add waypoints before start index
   updateClosestWaypoint(current_waypoints, current_pose_global_.pose, closest_search_size_);
-  if (closest_waypoint_index_ == -1) {
+  if (closest_waypoint_index_ == -1)
+  {
     return;
   }
 
@@ -400,10 +409,33 @@ void AstarAvoid::publishWaypoints(const ros::TimerEvent& e)
     return;
   }
 
-  for (int i = closest_waypoint_index_;
-       i < closest_waypoint_index_ + safety_waypoints_size_ && i < static_cast<int>(current_waypoints_.waypoints.size()); ++i)
+  if (use_route_loop_)
   {
-    safety_waypoints.waypoints.push_back(current_waypoints_.waypoints[i]);
+    // distance between last wp and first wp
+    double dist = getPlaneDistance(
+      current_waypoints_.waypoints.front().pose.pose.position,
+      current_waypoints_.waypoints.back().pose.pose.position);
+    // if distance is too big, it is dangerous to connect the last wp and first wp for a full loop
+    if (dist > waypoint_loopsafe_dist_max_)
+    {
+      ROS_WARN("Cannot loop as the first waypoint is too far from the last waypoint (dist: %f m).", dist);
+      use_route_loop_ = false;
+      ROS_WARN("Continue without looping");
+    }
+  }
+
+  int current_waypoints_size = static_cast<int>(current_waypoints_.waypoints.size());
+  for (int i = closest_waypoint_index_; i < closest_waypoint_index_ + safety_waypoints_size_; ++i)
+  {
+    if (i < current_waypoints_size)
+    {
+      safety_waypoints.waypoints.push_back(current_waypoints_.waypoints[i]);
+    }
+    else if (use_route_loop_)
+    {
+      safety_waypoints.waypoints.push_back(
+        current_waypoints_.waypoints[i - current_waypoints_size]);
+    }
   }
 
   if (!safety_waypoints.waypoints.empty())
@@ -438,7 +470,8 @@ void AstarAvoid::updateClosestWaypoint(const autoware_msgs::Lane& waypoints, con
   {
     // search within a limited area around closest_waypoint_index_ found in the previous loop.
     const int start_index = std::max(0, closest_waypoint_index_ - search_size / 2);
-    const int end_index = std::min(closest_waypoint_index_ + search_size / 2, static_cast<int>(waypoints.waypoints.size()));
+    const int end_index = std::min(closest_waypoint_index_ + search_size / 2,
+                                    static_cast<int>(waypoints.waypoints.size()));
 
     // consists of search_size/2 waypoints before and after ego-vehicle.
     autoware_msgs::Lane local_waypoints;
