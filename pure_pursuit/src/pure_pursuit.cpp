@@ -127,15 +127,13 @@ void PurePursuit::getNextWaypoint()
 
   // Start at closest waypoint
   closest_wp_index_ = getClosestWaypoint(current_waypoints_, current_pose_);
-
-  int starting_index = 0;
-  if (closest_wp_index_ >= 0)
+  if (closest_wp_index_ < 0)
   {
-    starting_index = closest_wp_index_;
+    closest_wp_index_ = 0;
   }
 
   // look for the next waypoint.
-  for (int i = starting_index; i < path_size; i++)
+  for (int i = closest_wp_index_; i < path_size; i++)
   {
     // if search waypoint is the last
     if (i == (path_size - 1))

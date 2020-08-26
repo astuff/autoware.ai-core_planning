@@ -104,7 +104,7 @@ private:
 
   // variables
   bool is_linear_interpolation_{ false };
-  int closest_wp_index_{ -1 };
+  int closest_wp_index_{ 0 };
   int next_waypoint_number_{ -1 };
   double lookahead_distance_{ 0.0 };
   double minimum_lookahead_distance_{ 6.0 };
