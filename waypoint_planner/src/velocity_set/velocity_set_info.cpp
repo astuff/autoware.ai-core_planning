@@ -50,7 +50,7 @@ VelocitySetInfo::VelocitySetInfo()
 
   velocity_change_limit_ = vel_change_limit_kph / 3.6;  // kph -> mps
 
-  health_checker_ptr_ = std::make_shared<autoware_health_checker::HealthChecker>(nh,private_nh_);
+  health_checker_ptr_ = std::make_shared<autoware_health_checker::HealthChecker>(nh, private_nh_);
   health_checker_ptr_->ENABLE();
 }
 
@@ -69,14 +69,15 @@ void VelocitySetInfo::configCallback(const autoware_config_msgs::ConfigVelocityS
   detection_height_bottom_ = config->detection_height_bottom;
   deceleration_obstacle_ = config->deceleration_obstacle;
   deceleration_stopline_ = config->deceleration_stopline;
-  velocity_change_limit_ = config->velocity_change_limit / 3.6; // kmph -> mps
+  velocity_change_limit_ = config->velocity_change_limit / 3.6;  // kmph -> mps
   deceleration_range_ = config->deceleration_range;
   temporal_waypoints_size_ = config->temporal_waypoints_size;
 }
 
 void VelocitySetInfo::pointsCallback(const sensor_msgs::PointCloud2ConstPtr &msg)
 {
-  health_checker_ptr_->CHECK_RATE("topic_rate_points_no_ground_slow", 8, 5, 1, "topic points_no_ground subscribe rate slow.");
+  health_checker_ptr_->CHECK_RATE("topic_rate_points_no_ground_slow", 8, 5, 1,
+                                  "topic points_no_ground subscribe rate slow.");
   pcl::PointCloud<pcl::PointXYZ> sub_points;
   pcl::fromROSMsg(*msg, sub_points);
 

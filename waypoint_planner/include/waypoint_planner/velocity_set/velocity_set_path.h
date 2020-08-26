@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-#ifndef VELOCITY_SET_PATH_H
-#define VELOCITY_SET_PATH_H
+#ifndef WAYPOINT_PLANNER_VELOCITY_SET_VELOCITY_SET_PATH_H
+#define WAYPOINT_PLANNER_VELOCITY_SET_VELOCITY_SET_PATH_H
 
 #include <autoware_msgs/Lane.h>
 #include <libwaypoint_follower/libwaypoint_follower.h>
 
 class VelocitySetPath
 {
- private:
+private:
   autoware_msgs::Lane original_waypoints_;
   autoware_msgs::Lane updated_waypoints_;
   autoware_msgs::Lane temporal_waypoints_;
@@ -30,12 +30,12 @@ class VelocitySetPath
   double current_vel_{0.0};
 
   // ROS param
-  double velocity_offset_; // m/s
-  double decelerate_vel_min_; // m/s
+  double velocity_offset_;  // m/s
+  double decelerate_vel_min_;  // m/s
 
   bool checkWaypoint(int num) const;
 
- public:
+public:
   VelocitySetPath();
   ~VelocitySetPath() = default;
 
@@ -90,4 +90,4 @@ class VelocitySetPath
   }
 };
 
-#endif // VELOCITY_SET_PATH_H
+#endif  // WAYPOINT_PLANNER_VELOCITY_SET_VELOCITY_SET_PATH_H
