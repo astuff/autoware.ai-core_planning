@@ -144,7 +144,8 @@ void PurePursuit::getNextWaypoint()
     }
 
     // if there exists an effective waypoint
-    if (getPlaneDistance(current_waypoints_.waypoints.at(i).pose.pose.position, current_pose_.position) > lookahead_distance_)
+    if (getPlaneDistance(
+      current_waypoints_.waypoints.at(i).pose.pose.position, current_pose_.position) > lookahead_distance_)
     {
       next_waypoint_number_ = i;
       return;
