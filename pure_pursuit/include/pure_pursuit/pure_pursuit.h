@@ -53,7 +53,7 @@ public:
   }
   void setCurrentWaypoints(const autoware_msgs::Lane& wps)
   {
-    current_waypoints_ = wps;
+    current_local_path_ = wps;
   }
   void setCurrentPose(const geometry_msgs::PoseStampedConstPtr& msg)
   {
@@ -67,7 +67,7 @@ public:
   // for debug on ROS
   geometry_msgs::Point getPoseOfNextWaypoint() const
   {
-    return current_waypoints_.waypoints.at(next_waypoint_number_).pose.pose.position;
+    return current_local_path_.waypoints.at(next_waypoint_number_).pose.pose.position;
   }
   geometry_msgs::Point getPoseOfNextTarget() const
   {
@@ -79,7 +79,7 @@ public:
   }
   autoware_msgs::Lane getCurrentWaypoints() const
   {
-    return current_waypoints_;
+    return current_local_path_;
   }
   double getLookaheadDistance() const
   {
@@ -91,7 +91,7 @@ public:
   }
   double getCommandVelocity() const
   {
-    return current_waypoints_.waypoints.at(closest_wp_index_).twist.twist.linear.x;
+    return current_local_path_.waypoints.at(closest_wp_index_).twist.twist.linear.x;
   }
 
   // processing
@@ -111,7 +111,7 @@ private:
   double current_linear_velocity_{ 0.0 };
   geometry_msgs::Pose current_pose_{};
   geometry_msgs::Point next_target_position_{};
-  autoware_msgs::Lane current_waypoints_{};
+  autoware_msgs::Lane current_local_path_{};
 
   // functions
   double calcCurvature(const geometry_msgs::Point& target) const;
