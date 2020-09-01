@@ -15,6 +15,7 @@
  */
 
 #include <pure_pursuit/pure_pursuit.h>
+#include <algorithm>
 
 namespace waypoint_follower
 {
