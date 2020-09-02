@@ -15,14 +15,16 @@
  */
 
 #include <waypoint_planner/velocity_set/velocity_set_path.h>
+#include <amathutils_lib/amathutils.hpp>
 
 #include <algorithm>
 
 VelocitySetPath::VelocitySetPath()
 {
   ros::NodeHandle private_nh_("~");
-  private_nh_.param<double>("velocity_offset", velocity_offset_, 1.2);
-  private_nh_.param<double>("decelerate_vel_min", decelerate_vel_min_, 1.3);
+  private_nh_.param<double>("min_accel_velocity", min_accel_velocity_, 1.0);
+  private_nh_.param<double>("decelerate_vel_min", min_decel_velocity_, 1.3);
+  private_nh_.param<float>("accel_velocity", accel_velocity_, 0.5);
 }
 
 // check if waypoint number is valid
@@ -40,7 +42,9 @@ void VelocitySetPath::setTemporalWaypoints(int temporal_waypoints_size, int clos
                                             geometry_msgs::PoseStamped control_pose)
 {
   if (closest_waypoint < 0)
+  {
     return;
+  }
 
   temporal_waypoints_.waypoints.clear();
   temporal_waypoints_.header = updated_waypoints_.header;
@@ -49,6 +53,7 @@ void VelocitySetPath::setTemporalWaypoints(int temporal_waypoints_size, int clos
   // push current pose
   autoware_msgs::Waypoint current_point;
   current_point.pose = control_pose;
+  current_point.pose.pose = closest_path_pose_;
   current_point.twist = updated_waypoints_.waypoints[closest_waypoint].twist;
   current_point.dtlane = updated_waypoints_.waypoints[closest_waypoint].dtlane;
   temporal_waypoints_.waypoints.push_back(std::move(current_point));
@@ -68,6 +73,8 @@ void VelocitySetPath::setTemporalWaypoints(int temporal_waypoints_size, int clos
 double VelocitySetPath::calcChangedVelocity(const double& current_vel, const double& accel,
                                             const std::array<int, 2>& range) const
 {
+  // Use static variables to reduce multiplications when the function is called
+  // repeatedly with the same current_vel arg
   static double current_velocity = current_vel;
   static double square_vel = current_vel * current_vel;
   if (current_velocity != current_vel)
@@ -75,7 +82,10 @@ double VelocitySetPath::calcChangedVelocity(const double& current_vel, const dou
     current_velocity = current_vel;
     square_vel = current_vel * current_vel;
   }
-  return std::sqrt(square_vel + 2.0 * accel * calcInterval(range.at(0), range.at(1)));
+
+  // accelerate with constant acceleration
+  // v = root((v0)^2 + 2ax)
+  return std::sqrt(square_vel + 2.0 * accel * distanceBetweenWaypoints(range.at(0), range.at(1)));
 }
 
 void VelocitySetPath::changeWaypointsForDeceleration(double deceleration, int closest_waypoint, int obstacle_waypoint)
@@ -89,10 +99,10 @@ void VelocitySetPath::changeWaypointsForDeceleration(double deceleration, int cl
       continue;
 
     // v = sqrt( (v0)^2 + 2ax )
-    // Keep the car at decelerate_vel_min_ when approaching the obstacles.
-    // without decelerate_vel_min_ term, changed_vel becomes zero if index == obstacle_waypoint.
+    // Keep the car at min_decel_velocity_ when approaching the obstacles.
+    // without min_decel_velocity_ term, changed_vel becomes zero if index == obstacle_waypoint.
     std::array<int, 2> range = {index, obstacle_waypoint};
-    double changed_vel = calcChangedVelocity(decelerate_vel_min_, deceleration, range);
+    double changed_vel = calcChangedVelocity(min_decel_velocity_, deceleration, range);
 
     double prev_vel = original_waypoints_.waypoints[index].twist.twist.linear.x;
     const int sgn = (prev_vel < 0) ? -1 : 1;
@@ -100,30 +110,85 @@ void VelocitySetPath::changeWaypointsForDeceleration(double deceleration, int cl
   }
 }
 
-void VelocitySetPath::avoidSuddenAcceleration(double deceleration, int closest_waypoint)
+void VelocitySetPath::updateClosestPathPose(geometry_msgs::Pose current_pose, int closest_wp_index)
 {
-  for (int i = 0;; i++)
+  int point_a_index;
+  int point_b_index;
+  int wp_size = original_waypoints_.waypoints.size();
+  closest_path_pose_.orientation = current_pose.orientation;
+
+  if (wp_size == 1)
   {
-    if (!checkWaypoint(closest_waypoint + i))
-      return;
-
-    // accelerate with constant acceleration
-    // v = root((v0)^2 + 2ax)
-    // Without velocity_offset_ term, changed_vel becomes current_vel_ when i == 0.
-    // For example, the car will not move if current_vel_ == 0.
-    std::array<int, 2> range = {closest_waypoint, closest_waypoint + i};
-    double changed_vel = calcChangedVelocity(current_vel_, deceleration, range) + velocity_offset_;
-
-    const double target_vel = updated_waypoints_.waypoints[closest_waypoint + i].twist.twist.linear.x;
-    // Don't exceed original velocity
-    if (changed_vel > std::abs(target_vel))
-      return;
-
-    const int sgn = (target_vel < 0) ? -1 : 1;
-    updated_waypoints_.waypoints[closest_waypoint + i].twist.twist.linear.x = sgn * changed_vel;
+    closest_path_pose_.position = current_pose.position;
+    return;
   }
 
-  return;
+  // Find closest point on the path
+  if (closest_wp_index <= 0)
+  {
+    point_a_index = 0;
+    point_b_index = 1;
+  }
+  else if (closest_wp_index >= wp_size - 1)
+  {
+    point_a_index = wp_size - 2;
+    point_b_index = wp_size - 1;
+  }
+  else
+  {
+    point_a_index = closest_wp_index;
+    point_b_index = closest_wp_index + 1;
+  }
+
+  closest_path_pose_.position = amathutils::getNearPtOnLine(
+    current_pose.position,
+    original_waypoints_.waypoints[point_a_index].pose.pose.position,
+    original_waypoints_.waypoints[point_b_index].pose.pose.position);
+}
+
+void VelocitySetPath::avoidSuddenAcceleration(double acceleration, int closest_wp_index)
+{
+  // Check if there is no need to accelerate
+  const double original_vel = updated_waypoints_.waypoints[closest_wp_index].twist.twist.linear.x;
+  if (current_vel_ >= original_vel)
+  {
+    return;
+  }
+
+  // Update closest/first point based on constant acceleration
+  double accelerated_vel = current_vel_ + accel_velocity_;
+
+  accelerated_vel = std::max(accelerated_vel, min_accel_velocity_);
+  accelerated_vel = std::min(accelerated_vel, original_vel);
+
+  const int sgn = (original_vel < 0) ? -1 : 1;
+  updated_waypoints_.waypoints[closest_wp_index].twist.twist.linear.x = sgn * accelerated_vel;
+
+  // Update the rest of the waypoints accelerating from closest point
+  int starting_wp_index = closest_wp_index;
+  for (int i = 1;; i++)
+  {
+    int wp_index = starting_wp_index + i;
+
+    if (!checkWaypoint(wp_index))
+    {
+      return;
+    }
+
+    std::array<int, 2> range = {starting_wp_index, wp_index};
+    double changed_vel = calcChangedVelocity(accelerated_vel, acceleration, range);
+    changed_vel = std::max(changed_vel, min_accel_velocity_);
+    const double original_vel = updated_waypoints_.waypoints[wp_index].twist.twist.linear.x;
+
+    // Don't exceed original velocity
+    if (changed_vel >= std::abs(original_vel))
+    {
+      return;
+    }
+
+    const int sgn = (original_vel < 0) ? -1 : 1;
+    updated_waypoints_.waypoints[wp_index].twist.twist.linear.x = sgn * changed_vel;
+  }
 }
 
 void VelocitySetPath::avoidSuddenDeceleration(double velocity_change_limit, double deceleration, int closest_waypoint)
@@ -165,13 +230,17 @@ void VelocitySetPath::changeWaypointsForStopping(int stop_waypoint, int obstacle
                                                   int closest_waypoint, double deceleration)
 {
   if (closest_waypoint < 0)
+  {
     return;
+  }
 
   // decelerate with constant deceleration
   for (int index = stop_waypoint; index >= closest_waypoint; index--)
   {
     if (!checkWaypoint(index))
+    {
       continue;
+    }
 
     // v = (v0)^2 + 2ax, and v0 = 0
     std::array<int, 2> range = {index, stop_waypoint};
@@ -193,36 +262,40 @@ void VelocitySetPath::initializeNewWaypoints()
   updated_waypoints_ = original_waypoints_;
 }
 
-double VelocitySetPath::calcInterval(const int begin, const int end) const
+double VelocitySetPath::distanceBetweenWaypoints(const int& begin, const int& end) const
 {
-  // check index
+  // Check index
   if (begin < 0 || begin >= getPrevWaypointsSize() || end < 0 || end >= getPrevWaypointsSize() || begin > end)
   {
     ROS_WARN_THROTTLE(1, "Invalid input index range");
     return 0.0;
   }
 
-  // Calculate the inteval of waypoints
+  // Calculate the distance between the waypoints
   double dist_sum = 0.0;
   for (int i = begin; i < end; i++)
   {
-    tf::Vector3 v1(original_waypoints_.waypoints[i].pose.pose.position.x,
-                   original_waypoints_.waypoints[i].pose.pose.position.y, 0);
-
-    tf::Vector3 v2(original_waypoints_.waypoints[i + 1].pose.pose.position.x,
-                   original_waypoints_.waypoints[i + 1].pose.pose.position.y, 0);
-
-    dist_sum += tf::tfDistance(v1, v2);
+    dist_sum += distanceBetweenPoints(
+      original_waypoints_.waypoints[i].pose.pose.position,
+      original_waypoints_.waypoints[i + 1].pose.pose.position);
   }
 
   return dist_sum;
+}
+
+double VelocitySetPath::distanceBetweenPoints(const geometry_msgs::Point& begin, const geometry_msgs::Point& end) const
+{
+  // Calculate the distance between the waypoints
+  tf::Vector3 v1(begin.x, begin.y, 0);
+  tf::Vector3 v2(end.x, end.y, 0);
+
+  return tf::tfDistance(v1, v2);
 }
 
 void VelocitySetPath::resetFlag()
 {
   set_path_ = false;
 }
-
 
 void VelocitySetPath::waypointsCallback(const autoware_msgs::LaneConstPtr& msg)
 {

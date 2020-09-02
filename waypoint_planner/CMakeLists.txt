@@ -7,6 +7,7 @@ find_package(autoware_build_flags REQUIRED)
 
 find_package(
   catkin REQUIRED COMPONENTS
+    amathutils_lib
     astar_search
     autoware_config_msgs
     autoware_health_checker

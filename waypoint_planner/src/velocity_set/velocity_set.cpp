@@ -27,6 +27,7 @@
 
 namespace
 {
+constexpr double LOOP_RATE = 10;
 constexpr int32_t DECELERATION_SEARCH_DISTANCE = 30;
 // The number of waypoints ahead of the current closest waypoint to search.
 constexpr int32_t STOP_SEARCH_DISTANCE = 60;
@@ -517,7 +518,9 @@ void changeWaypoints(const VelocitySetInfo& vs_info, const EControl& detection_r
       vs_path->changeWaypointsForDeceleration(deceleration, closest_waypoint, obstacle_waypoint);
     }
   }
-  vs_path->avoidSuddenAcceleration(deceleration, closest_waypoint);
+
+  vs_path->updateClosestPathPose(vs_info.getCurrentPose().pose, closest_waypoint);
+  vs_path->avoidSuddenAcceleration(vs_info.getAcceleration(), closest_waypoint);
   vs_path->avoidSuddenDeceleration(velocity_change_limit, deceleration, closest_waypoint);
 }
 
@@ -581,7 +584,7 @@ int main(int argc, char** argv)
   ros::Publisher stopline_waypoint_pub = nh.advertise<std_msgs::Int32>("stopline_waypoint", 1, true);
   ros::Publisher final_waypoints_pub = nh.advertise<autoware_msgs::Lane>("final_waypoints", 1, true);
 
-  ros::Rate loop_rate(update_rate);
+  ros::Rate loop_rate(LOOP_RATE);
   while (ros::ok())
   {
     ros::spinOnce();
@@ -599,8 +602,13 @@ int main(int argc, char** argv)
         continue;
     }
 
-    // Since the index 0 of safety_waypoints from astar_avoid node holds the closest waypoint, it is set to 0.
-    int32_t current_closest_waypoint = 0;
+    int closest_waypoint = getClosestWaypoint(vs_path.getNewWaypoints(), vs_info.getCurrentPose().pose);
+    if (closest_waypoint == -1)
+    {
+      loop_rate.sleep();
+      continue;
+    }
+
     // Initialize it to -1 which indicates no closest_crosswalk_waypoint is found.
     int32_t closest_crosswalk_waypoint = -1;
 
@@ -617,22 +625,22 @@ int main(int argc, char** argv)
         crosswalk.setCrossWalkPoints();
       }
       // if crosswalk.loaded_all is false, the closest_crosswalk_waypoint is set to -1.
-      closest_crosswalk_waypoint = crosswalk.findClosestCrosswalk(current_closest_waypoint,
+      closest_crosswalk_waypoint = crosswalk.findClosestCrosswalk(closest_waypoint,
                                                                   vs_path.getPrevWaypoints(), STOP_SEARCH_DISTANCE);
     }
     crosswalk.setDetectionWaypoint(closest_crosswalk_waypoint);
 
     int32_t traffic_waypoint_idx = -1;
-    EControl detection_result = obstacleDetection(current_closest_waypoint, vs_path.getPrevWaypoints(),
+    EControl detection_result = obstacleDetection(closest_waypoint, vs_path.getPrevWaypoints(),
                                                   crosswalk, vs_info, detection_range_markers_pub,
                                                   obstacle_marker_pub, &traffic_waypoint_idx);
 
     // Update waypoints' velocity profile based on obtacle detection results.
-    changeWaypoints(vs_info, detection_result, current_closest_waypoint, traffic_waypoint_idx, &vs_path);
+    changeWaypoints(vs_info, detection_result, closest_waypoint, traffic_waypoint_idx, &vs_path);
 
     // Only retrieve a limited number of updated waypoints ahead of the ego-vehicle.
-    vs_path.setTemporalWaypoints(vs_info.getTemporalWaypointsSize(), current_closest_waypoint,
-                                  vs_info.getControlPose());
+    vs_path.setTemporalWaypoints(vs_info.getTemporalWaypointsSize(), closest_waypoint,
+                                 vs_info.getCurrentPose());
 
     // publish final waypoints
     final_waypoints_pub.publish(vs_path.getTemporalWaypoints());
@@ -658,7 +666,6 @@ int main(int argc, char** argv)
     obstacle_waypoint_pub.publish(obstacle_waypoint_index);
     stopline_waypoint_pub.publish(stopline_waypoint_index);
 
-    vs_path.resetFlag();
     vs_info.clearPoints();
 
     loop_rate.sleep();

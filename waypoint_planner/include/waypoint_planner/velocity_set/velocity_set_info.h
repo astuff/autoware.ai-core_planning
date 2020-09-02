@@ -32,26 +32,25 @@ class VelocitySetInfo
 {
   private:
   // parameters
-  double stop_range_;                       // if obstacle is in this range, stop
-  double deceleration_range_;               // if obstacle is in this range, decelerate
-  int points_threshold_;                    // points threshold to find obstacles
-  double detection_height_top_;             // from sensor
-  double detection_height_bottom_;          // from sensor
-  double stop_distance_obstacle_;           // (meter) stopping distance from obstacles
-  double stop_distance_stopline_;           // (meter) stopping distance from stoplines
-  double deceleration_obstacle_;            // (m/s^2) deceleration for obstacles
-  double deceleration_stopline_;            // (m/s^2) deceleration for stopline
-  double velocity_change_limit_;            // (m/s)
-  double temporal_waypoints_size_;          // (meter)
-  int  wpidx_detectionResultByOtherNodes_;  // waypoints index@finalwaypoints
+  double stop_range_ = 1.3;                      // if obstacle is in this range, stop
+  double remove_points_upto_ = 2.3;
+  double deceleration_range_ = 0;                // if obstacle is in this range, decelerate
+  int points_threshold_ = 10;                    // points threshold to find obstacles
+  double detection_height_top_ = 0.2;            // from sensor
+  double detection_height_bottom_ = -1.7;        // from sensor
+  double stop_distance_obstacle_ = 10;           // (meter) stopping distance from obstacles
+  double stop_distance_stopline_ = 5;            // (meter) stopping distance from stoplines
+  double acceleration_ = 0.5;                    // (m/s^2) acceleration
+  double deceleration_obstacle_ = 0.8;           // (m/s^2) deceleration for obstacles
+  double deceleration_stopline_ = 0.6;           // (m/s^2) deceleration for stopline
+  double velocity_change_limit_ = 2.77;          // (m/s)
+  double temporal_waypoints_size_ = 100;         // (meter)
+  int  wpidx_detectionResultByOtherNodes_ = -1;  // waypoints index@finalwaypoints
 
-  // ROS param
-  double remove_points_upto_;
-
+  bool set_pose_ = false;
   pcl::PointCloud<pcl::PointXYZ> points_;
-  geometry_msgs::Pose localizer_pose_;  // pose of sensor
-  geometry_msgs::PoseStamped control_pose_;  // pose of base_link
-  bool set_pose_;
+  geometry_msgs::Pose localizer_pose_;       // pose of sensor
+  geometry_msgs::PoseStamped current_pose_;  // pose of base_link
 
   std::shared_ptr<autoware_health_checker::HealthChecker> health_checker_ptr_;
 
@@ -109,6 +108,11 @@ class VelocitySetInfo
     return stop_distance_stopline_;
   }
 
+  double getAcceleration() const
+  {
+    return acceleration_;
+  }
+
   double getDecelerationObstacle() const
   {
     return deceleration_obstacle_;
@@ -134,9 +138,9 @@ class VelocitySetInfo
     return points_;
   }
 
-  geometry_msgs::PoseStamped getControlPose() const
+  geometry_msgs::PoseStamped getCurrentPose() const
   {
-    return control_pose_;
+    return current_pose_;
   }
 
   const geometry_msgs::Pose& getLocalizerPose() const
