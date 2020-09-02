@@ -11,6 +11,7 @@
   <buildtool_depend>autoware_build_flags</buildtool_depend>
   <buildtool_depend>catkin</buildtool_depend>
 
+  <depend>amathutils_lib</depend>
   <depend>astar_search</depend>
   <depend>autoware_config_msgs</depend>
   <depend>autoware_health_checker</depend>

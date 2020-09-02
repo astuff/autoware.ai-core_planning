@@ -38,7 +38,7 @@
 #include <waypoint_planner/velocity_set/velocity_set_info.h>
 #include <waypoint_planner/velocity_set/velocity_set_path.h>
 
-constexpr int LOOP_RATE = 10;
+constexpr double LOOP_RATE = 10;
 constexpr double DECELERATION_SEARCH_DISTANCE = 30;
 constexpr double STOP_SEARCH_DISTANCE = 60;
 
@@ -609,9 +609,10 @@ void changeWaypoints(const VelocitySetInfo& vs_info, const EControl& detection_r
     vs_path->initializeNewWaypoints();
   }
 
-  vs_path->avoidSuddenAcceleration(deceleration, closest_waypoint);
+  vs_path->updateClosestPathPose(vs_info.getCurrentPose().pose, closest_waypoint);
+  vs_path->avoidSuddenAcceleration(vs_info.getAcceleration(), closest_waypoint);
   vs_path->avoidSuddenDeceleration(vs_info.getVelocityChangeLimit(), deceleration, closest_waypoint);
-  vs_path->setTemporalWaypoints(vs_info.getTemporalWaypointsSize(), closest_waypoint, vs_info.getControlPose());
+  vs_path->setTemporalWaypoints(vs_info.getTemporalWaypointsSize(), closest_waypoint, vs_info.getCurrentPose());
   final_waypoints_pub.publish(vs_path->getTemporalWaypoints());
 }
 
@@ -696,9 +697,14 @@ int main(int argc, char** argv)
         continue;
     }
 
-    int closest_waypoint = 0;
-
     if (!vs_info.getSetPose() || !vs_path.getSetPath())
+    {
+      loop_rate.sleep();
+      continue;
+    }
+
+    int closest_waypoint = getClosestWaypoint(vs_path.getNewWaypoints(), vs_info.getCurrentPose().pose);
+    if (closest_waypoint == -1)
     {
       loop_rate.sleep();
       continue;
@@ -747,7 +753,6 @@ int main(int argc, char** argv)
     obstacle_waypoint_pub.publish(obstacle_waypoint_index);
     stopline_waypoint_pub.publish(stopline_waypoint_index);
 
-    vs_path.resetFlag();
     loop_rate.sleep();
   }
 
