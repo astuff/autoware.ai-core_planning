@@ -33,9 +33,11 @@ public:
   TwistFilterNode();
 
 private:
-  ros::NodeHandle nh_, private_nh_;
+  ros::NodeHandle nh_, pnh_;
   std::shared_ptr<twist_filter::TwistFilter> twist_filter_ptr_;
   autoware_health_checker::HealthChecker health_checker_;
+  bool enable_smoothing_ = false;
+  bool enable_debug_ = false;
 
   // publishers
   ros::Publisher twist_pub_, ctrl_pub_;
