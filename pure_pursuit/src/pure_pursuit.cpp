@@ -15,6 +15,7 @@
  */
 
 #include <pure_pursuit/pure_pursuit.h>
+#include <algorithm>
 
 namespace waypoint_follower
 {
@@ -46,15 +47,15 @@ double PurePursuit::calcCurvature(const geometry_msgs::Point& target) const
 // linear interpolation of next target
 bool PurePursuit::interpolateNextTarget(int next_waypoint, geometry_msgs::Point* next_target) const
 {
-  const int path_size = static_cast<int>(current_waypoints_.size());
+  const int path_size = static_cast<int>(current_local_path_.waypoints.size());
   if (next_waypoint == path_size - 1)
   {
-    *next_target = current_waypoints_.back().pose.pose.position;
+    *next_target = current_local_path_.waypoints.back().pose.pose.position;
     return true;
   }
   const double search_radius = lookahead_distance_;
-  const geometry_msgs::Point end = current_waypoints_.at(next_waypoint).pose.pose.position;
-  const geometry_msgs::Point start = current_waypoints_.at(next_waypoint - 1).pose.pose.position;
+  const geometry_msgs::Point end = current_local_path_.waypoints.at(next_waypoint).pose.pose.position;
+  const geometry_msgs::Point start = current_local_path_.waypoints.at(next_waypoint - 1).pose.pose.position;
 
   // project ego vehicle's current position at C onto the line at D in between two waypoints A and B.
   const tf::Vector3 p_A(start.x, start.y, 0.0);
@@ -116,7 +117,7 @@ bool PurePursuit::interpolateNextTarget(int next_waypoint, geometry_msgs::Point*
 
 void PurePursuit::getNextWaypoint()
 {
-  const int path_size = static_cast<int>(current_waypoints_.size());
+  const int path_size = static_cast<int>(current_local_path_.waypoints.size());
 
   // if waypoints are not given, do nothing.
   if (path_size == 0)
@@ -125,8 +126,11 @@ void PurePursuit::getNextWaypoint()
     return;
   }
 
+  // Start at closest waypoint, never goes negative
+  closest_wp_index_ = std::max(getClosestWaypoint(current_local_path_, current_pose_), 0);
+
   // look for the next waypoint.
-  for (int i = 0; i < path_size; i++)
+  for (int i = closest_wp_index_; i < path_size; i++)
   {
     // if search waypoint is the last
     if (i == (path_size - 1))
@@ -137,7 +141,8 @@ void PurePursuit::getNextWaypoint()
     }
 
     // if there exists an effective waypoint
-    if (getPlaneDistance(current_waypoints_.at(i).pose.pose.position, current_pose_.position) > lookahead_distance_)
+    if (getPlaneDistance(
+      current_local_path_.waypoints.at(i).pose.pose.position, current_pose_.position) > lookahead_distance_)
     {
       next_waypoint_number_ = i;
       return;
@@ -160,7 +165,7 @@ bool PurePursuit::canGetCurvature(double* output_kappa)
   }
   // check whether curvature is valid or not
   bool is_valid_curve = false;
-  for (const auto& el : current_waypoints_)
+  for (const auto& el : current_local_path_.waypoints)
   {
     if (getPlaneDistance(el.pose.pose.position, current_pose_.position) > minimum_lookahead_distance_)
     {
@@ -174,9 +179,9 @@ bool PurePursuit::canGetCurvature(double* output_kappa)
   }
   // if is_linear_interpolation_ is false or next waypoint is first or last
   if (!is_linear_interpolation_ || next_waypoint_number_ == 0 ||
-      next_waypoint_number_ == (static_cast<int>(current_waypoints_.size() - 1)))
+      next_waypoint_number_ == (static_cast<int>(current_local_path_.waypoints.size() - 1)))
   {
-    next_target_position_ = current_waypoints_.at(next_waypoint_number_).pose.pose.position;
+    next_target_position_ = current_local_path_.waypoints.at(next_waypoint_number_).pose.pose.position;
     *output_kappa = calcCurvature(next_target_position_);
     return true;
   }
