@@ -92,6 +92,7 @@ private:
   // the next waypoint must be outside of this threshold.
   double minimum_lookahead_distance_;
   std::string output_interface_;
+  geometry_msgs::Pose current_pose_;
 
   // callbacks
   void callbackFromConfig(const autoware_config_msgs::ConfigWaypointFollowerConstPtr& config);
@@ -103,6 +104,7 @@ private:
   void initForROS();
 
   // functions
+  void updateCommandVelocity();
   void publishControlCommands(const bool& can_get_curvature, const double& kappa) const;
   void publishTwistStamped(const bool& can_get_curvature, const double& kappa) const;
   void publishCtrlCmdStamped(const bool& can_get_curvature, const double& kappa) const;
