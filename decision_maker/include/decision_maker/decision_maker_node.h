@@ -38,6 +38,7 @@
 #include <autoware_msgs/TrafficLight.h>
 #include <autoware_msgs/VehicleCmd.h>
 #include <autoware_msgs/VehicleLocation.h>
+#include <autoware_msgs/VehicleStatus.h>
 #include <autoware_msgs/Waypoint.h>
 #include <autoware_msgs/WaypointState.h>
 #include <geometry_msgs/Point.h>
@@ -170,6 +171,9 @@ struct AutowareStatus
 
   // It keeps track of how long intersection is clear for
   double stopline_safety_timer = 0.0;
+
+  // Autonomous or manual control of the vehicle
+  bool autonomy_engaged = false;
 };
 
 class DecisionMakerNode
@@ -377,6 +381,7 @@ private:
   void callbackFromConfig(const autoware_config_msgs::ConfigDecisionMaker& msg);
   void callbackFromStateCmd(const std_msgs::String& msg);
   void callbackFromEngage(const std_msgs::Bool& msg);
+  void callbackFromStatus(const autoware_msgs::VehicleStatus& msg);
   void callbackFromObstacleWaypoint(const std_msgs::Int32& msg);
   void callbackFromStoplineWaypoint(const std_msgs::Int32& msg);
   void callbackFromStopOrder(const std_msgs::Int32& msg);

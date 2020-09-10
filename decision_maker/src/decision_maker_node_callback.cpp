@@ -76,6 +76,18 @@ void DecisionMakerNode::callbackFromEngage(const std_msgs::Bool& msg)
   }
 }
 
+void DecisionMakerNode::callbackFromStatus(const autoware_msgs::VehicleStatus& msg)
+{
+  if (msg.drivemode == 1 || msg.steeringmode == 1)
+  {
+    current_status_.autonomy_engaged = true;
+  }
+  else
+  {
+    current_status_.autonomy_engaged = false;
+  }
+}
+
 void DecisionMakerNode::callbackFromLaneChangeFlag(const std_msgs::Int32& msg)
 {
   current_status_.change_flag = msg.data;

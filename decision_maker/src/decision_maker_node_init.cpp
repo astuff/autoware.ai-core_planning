@@ -276,6 +276,7 @@ void DecisionMakerNode::createSubscriber(void)
     nh_.subscribe("config/decision_maker", 3, &DecisionMakerNode::callbackFromConfig, this);
   Subs["state_cmd"] = nh_.subscribe("state_cmd", 1, &DecisionMakerNode::callbackFromStateCmd, this);
   Subs["vehicle_engage"] = nh_.subscribe("vehicle/engage", 1, &DecisionMakerNode::callbackFromEngage, this);
+  Subs["vehicle_status"] = nh_.subscribe("vehicle_status", 1, &DecisionMakerNode::callbackFromStatus, this);
   Subs["detection/lidar_detector/objects"] =
     nh_.subscribe("detection/lidar_detector/objects", 1, &DecisionMakerNode::callbackFromDetection, this);
   Subs["current_velocity"] =

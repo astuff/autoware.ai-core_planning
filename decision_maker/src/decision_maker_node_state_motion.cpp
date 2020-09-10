@@ -57,7 +57,7 @@ void DecisionMakerNode::updateDriveState(cstring_t& state_name, int status)
     return;
   }
 
-  if (current_status_.closest_waypoint == -1)
+  if (current_status_.closest_waypoint == -1 && current_status_.autonomy_engaged)
   {
     publishOperatorHelpMessage("The vehicle passed last waypoint or waypoint does not exist near the vehicle.");
     tryNextState("mission_aborted");
