@@ -754,14 +754,6 @@ int32_t getClosestWaypointNumber(const autoware_msgs::Lane& current_lane, const 
   }
   else
   {
-    // check to see the vehicle is following each waypoint within acceptable distance
-    if (distance_threshold <
-        getTwoDimensionalDistance(current_lane.waypoints.at(previous_number).pose.pose.position, current_pose.position))
-    {
-      ROS_WARN_THROTTLE(2, "current_pose is far away from previous closest waypoint.");
-      return -1;
-    }
-
     // start searching for closest waypoint from range_min (previous waypoint)
     range_min = static_cast<uint32_t>(previous_number);
     // range_max depends on how fast the vehicle is moving (with minimum value minimum_lookahead_distance)
@@ -813,10 +805,18 @@ int32_t getClosestWaypointNumber(const autoware_msgs::Lane& current_lane, const 
   // calculate distance from ego to each waypoint and find the smallest distance (closest)
   for (const auto& el : idx_vec)
   {
-    double dt = getTwoDimensionalDistance(current_pose.position, current_lane.waypoints.at(el).pose.pose.position);
-    dist_vec.push_back(dt);
+    double distance = getTwoDimensionalDistance(
+      current_pose.position, current_lane.waypoints.at(el).pose.pose.position);
+    dist_vec.push_back(distance);
   }
+
+  // Check distance
   std::vector<double>::iterator itr = std::min_element(dist_vec.begin(), dist_vec.end());
+  if (*itr > distance_threshold)
+  {
+    return -1;
+  }
+
   int32_t closest_waypoint_idx = idx_vec.at(static_cast<uint32_t>(std::distance(dist_vec.begin(), itr)));
   return closest_waypoint_idx;
 }
