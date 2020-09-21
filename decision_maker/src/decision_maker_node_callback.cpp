@@ -139,9 +139,8 @@ void DecisionMakerNode::insertPointWithinCrossRoad(autoware_msgs::LaneArray& lan
             area.insideLanes.emplace_back();
             area.bbox.pose.orientation = wp.pose.pose.orientation;
           }
-          area.insideLanes.back().waypoints.push_back(wp);
-          area.insideWaypoint_points.push_back(pp);  // geometry_msgs::point
-          // area.insideLanes.Waypoints.push_back(wp);//autoware_msgs::Waypoint
+          area.insideLanes.back().waypoints.push_back(wp);  // autoware_msgs::Lane
+          area.insideWaypoints.push_back(wp);  // autoware_msgs::Waypoint
 
           // assign crossroad's aid to waypoint
           wp.wpstate.aid = area.area_id;
@@ -623,6 +622,23 @@ void DecisionMakerNode::callbackFromFinalWaypoint(const autoware_msgs::Lane& msg
 void DecisionMakerNode::callbackFromClosestWaypoint(const std_msgs::Int32& msg)
 {
   current_status_.closest_waypoint = msg.data;
+
+  for (const auto& intersect : intersects_)
+  {
+    if (current_status_.stopline_intersect_id == intersect.id)
+    {
+      // if vehicle exits out of the intersection, reset curr_stopped_idx
+      if (msg.data > intersect.insideWaypoints.back().gid)
+      {
+        current_status_.curr_stopped_idx = -1;
+      }
+      // if vehicle backs up past the stopline, reset curr_stopped_idx
+      if (msg.data - intersect.insideWaypoints.front().gid > stopline_reset_count_)
+      {
+        current_status_.curr_stopped_idx = -1;
+      }
+    }
+  }
 }
 
 void DecisionMakerNode::callbackFromCurrentPose(const geometry_msgs::PoseStamped& msg)

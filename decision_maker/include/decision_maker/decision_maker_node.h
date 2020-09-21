@@ -159,9 +159,6 @@ struct AutowareStatus
   int found_stopsign_idx = -1;
   int curr_stopped_idx = -1;
 
-  // It holds the gid of the stop sign waypoint the vehicle has just crossed
-  int prev_stopsign_idx = -1;
-
   // It holds ordered stop waypoint's gid published by other nodes.
   int ordered_stop_idx = -1;
   int prev_ordered_idx = -1;
