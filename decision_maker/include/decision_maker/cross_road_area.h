@@ -35,7 +35,7 @@ public:
   std::vector<geometry_msgs::Point> points;
   jsk_recognition_msgs::BoundingBox bbox;
   std::vector<autoware_msgs::Lane> insideLanes;
-  std::vector<geometry_msgs::Point> insideWaypoint_points;
+  std::vector<autoware_msgs::Waypoint> insideWaypoints;
 
   struct StopArea
   {

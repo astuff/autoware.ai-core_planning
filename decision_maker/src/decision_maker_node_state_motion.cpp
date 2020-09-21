@@ -15,6 +15,7 @@
 #include "decision_maker/decision_maker_node.h"
 
 #include <utility>
+#include <algorithm>
 
 namespace decision_maker
 {
@@ -98,14 +99,6 @@ std::pair<uint8_t, int> DecisionMakerNode::getStopSignStateFromWaypoint(void)
     return ret;
   }
 
-  // reset previous stop sign waypoint
-  if (current_status_.finalwaypoints.waypoints.at(1).gid > current_status_.curr_stopped_idx ||
-      (unsigned int)(current_status_.curr_stopped_idx - current_status_.finalwaypoints.waypoints.at(1).gid) >
-          stopline_reset_count_)
-  {
-    current_status_.curr_stopped_idx = -1;
-  }
-
   // start from index 1 since index 0 holds ego-vehicle's current pose.
   for (size_t idx = 1; idx < current_status_.finalwaypoints.waypoints.size() - 1; ++idx)
   {
@@ -139,7 +132,7 @@ void DecisionMakerNode::entryGoState(cstring_t& state_name, int status)
 void DecisionMakerNode::updateGoState(cstring_t& state_name, int status)
 {
   std::pair<uint8_t, int> get_stopsign = getStopSignStateFromWaypoint();
-  if (get_stopsign.first != 0)
+  if (get_stopsign.first != 0 && get_stopsign.first != current_status_.curr_stopped_idx)
   {
     current_status_.found_stopsign_idx = get_stopsign.second;
   }
@@ -221,16 +214,10 @@ void DecisionMakerNode::updateStopState(cstring_t& state_name, int status)
 
 void DecisionMakerNode::updateStoplineState(cstring_t& state_name, int status)
 {
-  // do not publish previously stopped stopline
-  if (current_status_.found_stopsign_idx != current_status_.prev_stopsign_idx)
-  {
-    publishStoplineWaypointIdx(current_status_.found_stopsign_idx);
-  }
+  publishStoplineWaypointIdx(current_status_.found_stopsign_idx);
 
   // only run this once when approaching an intersection
-  if (stopline_init_flag_
-    && current_status_.prev_stopsign_idx != current_status_.found_stopsign_idx
-    && current_status_.found_stopsign_idx != -1)
+  if (stopline_init_flag_ && current_status_.found_stopsign_idx != -1)
   {
     int stop_line_id = -1;
     current_status_.stopline_intersect_id = -1;
@@ -256,6 +243,7 @@ void DecisionMakerNode::updateStoplineState(cstring_t& state_name, int status)
         }
       }
     }
+    current_status_.curr_stopped_idx = current_status_.found_stopsign_idx;
     stopline_init_flag_ = false;
   }
 
@@ -319,8 +307,6 @@ void DecisionMakerNode::updateStoplineState(cstring_t& state_name, int status)
         ROS_INFO("Intersection clear! Proceed");
         tryNextState("clear");
       }
-      // remember the stopsign id which the ego vehicle previously stopped at
-      current_status_.prev_stopsign_idx = current_status_.found_stopsign_idx;
       // reset all flags
       stopline_start_timer_flag_ = false;
       stopline_timer_flag_ = false;
@@ -356,7 +342,6 @@ void DecisionMakerNode::updateReservedStopState(cstring_t& state_name, int statu
 }
 void DecisionMakerNode::exitReservedStopState(cstring_t& state_name, int status)
 {
-  current_status_.curr_stopped_idx = current_status_.found_stopsign_idx;
   current_status_.found_stopsign_idx = -1;
 }
 

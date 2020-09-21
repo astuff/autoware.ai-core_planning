@@ -16,6 +16,8 @@
 
 #include <cmath>
 #include <vector>
+#include <tuple>
+#include <algorithm>
 
 #include <amathutils_lib/amathutils.hpp>
 
@@ -23,6 +25,7 @@ namespace decision_maker
 {
 
 #define TARGET_WAYPOINTS_NUM 15  // TODO(someone): need to change rosparam
+constexpr double MAXIMUM_ANGLE_ERROR_THRESHOLD = 0.52;
 
 CrossRoadArea::CrossRoadArea()
   : id{},
@@ -30,12 +33,14 @@ CrossRoadArea::CrossRoadArea()
     points{},
     bbox{},
     insideLanes{},
-    insideWaypoint_points{}
+    insideWaypoints{}
 {
 }
 
 std::vector<geometry_msgs::Point> CrossRoadArea::convhull(const CrossRoadArea* _TargetArea)
 {
+  // The convex hull of a set of points is defined as the smallest convex polygon,
+  // that encloses all of the points in the set
   std::vector<int> enablePoints;
 
   if (_TargetArea->points.size() < 3)
@@ -83,6 +88,25 @@ std::vector<geometry_msgs::Point> CrossRoadArea::convhull(const CrossRoadArea* _
       }
     }
   }
+
+  // find mean x and y of all convhull points
+  double x_mean = 0.0;
+  double y_mean = 0.0;
+  for (auto const point : point_arrays)
+  {
+    x_mean += point.x;
+    y_mean += point.y;
+  }
+  x_mean = x_mean/point_arrays.size();
+  y_mean = y_mean/point_arrays.size();
+
+  // sort by ordering points clockwise with respect to average center point
+  std::sort(point_arrays.begin(), point_arrays.end(),
+    [x_mean, y_mean](const geometry_msgs::Point& lhs, const geometry_msgs::Point& rhs)
+  {
+    return std::atan2((lhs.x-x_mean), (lhs.y-y_mean)) < std::atan2((rhs.x-x_mean), (rhs.y-y_mean));
+  });  //NOLINT
+
   return point_arrays;
 }
 
@@ -116,7 +140,7 @@ bool CrossRoadArea::isInsideArea(const CrossRoadArea* _TargetArea, geometry_msgs
     // deg += std::acos(cos_)? std::acos(cos_)/ M_PI * 180.0 : 0.0;
     rad += std::acos(cos_) ? std::acos(cos_) : 0.0;
   }
-  if (fabs((2 * M_PI) - rad) <= 0.35 /*about 30 degree*/)
+  if (fabs((2 * M_PI) - rad) <= MAXIMUM_ANGLE_ERROR_THRESHOLD /*about 30 degree*/)
   {
     return true;
   }
