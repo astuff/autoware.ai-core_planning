@@ -123,27 +123,16 @@ void DecisionMakerNode::insertPointWithinCrossRoad(autoware_msgs::LaneArray& lan
   {
     for (auto& wp : lane.waypoints)
     {
-      geometry_msgs::Point pp;
-      pp.x = wp.pose.pose.position.x;
-      pp.y = wp.pose.pose.position.y;
-      pp.z = wp.pose.pose.position.z;
-
       // for each crossroad area
-      for (auto& area : intersects_)
+      for (auto& intersect : intersects_)
       {
         // if waypoint exists in crossroad area
-        if (CrossRoadArea::isInsideArea(&area, pp))
+        if (intersect.addWaypoint(wp))
         {
-          if (area.insideLanes.empty() || wp.gid != area.insideLanes.back().waypoints.back().gid + 1)
-          {
-            area.insideLanes.emplace_back();
-            area.bbox.pose.orientation = wp.pose.pose.orientation;
-          }
-          area.insideLanes.back().waypoints.push_back(wp);  // autoware_msgs::Lane
-          area.insideWaypoints.push_back(wp);  // autoware_msgs::Waypoint
-
           // assign crossroad's aid to waypoint
-          wp.wpstate.aid = area.area_id;
+          wp.wpstate.aid = intersect.area_id;
+          // each waypoint should only exist in a single intersection
+          break;
         }
       }
     }
@@ -154,9 +143,9 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
 {
   insertPointWithinCrossRoad(lane_array);
   // STR
-  for (auto& area : intersects_)
+  for (auto& intersect : intersects_)
   {
-    for (auto& laneinArea : area.insideLanes)
+    for (auto& laneinArea : intersect.inside_lanes)
     {
       // To straight/left/right recognition by using angle
       // between first-waypoint and end-waypoint in intersection area.
@@ -176,7 +165,7 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
         {
           for (auto& wp : lane.waypoints)
           {
-            if (wp.gid == wp_lane.gid && wp.wpstate.aid == area.area_id)
+            if (wp.gid == wp_lane.gid && wp.wpstate.aid == intersect.area_id)
             {
               wp.wpstate.steering_state = steering_state;
             }
@@ -336,9 +325,13 @@ void DecisionMakerNode::setWaypointStateUsingVectorMap(autoware_msgs::LaneArray&
       }
     }
 
+    // Mark the last #(num_of_set_mission_complete_flag) of waypoints with MISSION COMPLETE FLAG
     size_t wp_idx = lane.waypoints.size();
-    for (unsigned int counter = 0;
-         counter <= (wp_idx <= num_of_set_mission_complete_flag ? wp_idx : num_of_set_mission_complete_flag); counter++)
+    if (wp_idx > num_of_set_mission_complete_flag)
+    {
+      wp_idx = num_of_set_mission_complete_flag;
+    }
+    for (unsigned int counter = 0; counter <= wp_idx; counter++)
     {
       lane.waypoints.at(--wp_idx).wpstate.event_state = autoware_msgs::WaypointState::TYPE_EVENT_GOAL;
     }
@@ -572,9 +565,13 @@ void DecisionMakerNode::setWaypointStateUsingLanelet2Map(autoware_msgs::LaneArra
       }
     }
 
+    // Mark the last #(num_of_set_mission_complete_flag) of waypoints with MISSION COMPLETE FLAG
     size_t wp_idx = lane.waypoints.size();
-    for (unsigned int counter = 0;
-         counter <= (wp_idx <= num_of_set_mission_complete_flag ? wp_idx : num_of_set_mission_complete_flag); counter++)
+    if (wp_idx > num_of_set_mission_complete_flag)
+    {
+      wp_idx = num_of_set_mission_complete_flag;
+    }
+    for (unsigned int counter = 0; counter <= wp_idx; counter++)
     {
       lane.waypoints.at(--wp_idx).wpstate.event_state = autoware_msgs::WaypointState::TYPE_EVENT_GOAL;
     }
@@ -623,21 +620,21 @@ void DecisionMakerNode::callbackFromClosestWaypoint(const std_msgs::Int32& msg)
 {
   current_status_.closest_waypoint = msg.data;
 
-  for (const auto& intersect : intersects_)
+  if (current_status_.current_intersection_ptr == nullptr)
+    return;
+
+  if (current_status_.current_intersection_ptr->inside_waypoints.size() == 0)
+    return;
+
+  // if vehicle exits out of the intersection, reset curr_stopped_idx
+  if (msg.data > current_status_.current_intersection_ptr->inside_waypoints.back().gid)
   {
-    if (current_status_.stopline_intersect_id == intersect.id)
-    {
-      // if vehicle exits out of the intersection, reset curr_stopped_idx
-      if (msg.data > intersect.insideWaypoints.back().gid)
-      {
-        current_status_.curr_stopped_idx = -1;
-      }
-      // if vehicle backs up past the stopline, reset curr_stopped_idx
-      if (msg.data - intersect.insideWaypoints.front().gid > stopline_reset_count_)
-      {
-        current_status_.curr_stopped_idx = -1;
-      }
-    }
+     current_status_.curr_stopped_idx = -1;
+  }
+  // if vehicle backs up past the stopline, reset curr_stopped_idx
+  if (msg.data - current_status_.current_intersection_ptr->inside_waypoints.front().gid > stopline_reset_count_)
+  {
+    current_status_.curr_stopped_idx = -1;
   }
 }
 
@@ -696,98 +693,23 @@ void DecisionMakerNode::callbackFromLanelet2Map(const autoware_lanelet2_msgs::Ma
 
 void DecisionMakerNode::callbackFromDetection(const autoware_msgs::DetectedObjectArray& msg)
 {
-  tf2_ros::Buffer tfBuffer;
-  tf2_ros::TransformListener tfListener(tfBuffer);
-  geometry_msgs::TransformStamped tf_local2global;
-  geometry_msgs::Pose obj_global_pose;
-  std::string local_frame = msg.header.frame_id;
-  const std::string global_frame = "map";
+  // don't check until current_intersection is found
+  if (current_status_.current_intersection_ptr == nullptr)
+    return;
+
+  // don't check until ego reaches the intersection
+  if (fabs(current_status_.velocity) > stopped_vel_)
+    return;
 
   if (current_status_.stopline_waypoint != -1)
   {
-    const int max_num_of_tries = 3;
-    int num_of_tries = 0;
-    while (1)
+    if (current_status_.current_intersection_ptr->isObjectInsideStopAreas(msg, stopline_init_phase2_flag_))
     {
-      try
-      {
-        tf_local2global = tfBuffer.lookupTransform(global_frame, local_frame, ros::Time(0), ros::Duration(1.0));
-        break;
-      }
-      catch (tf::TransformException ex)
-      {
-        ROS_ERROR("%s", ex.what());
-        if (++num_of_tries == max_num_of_tries)
-        {
-          ROS_ERROR("Transform retry attempt reached max_num_of_tries! Resetting stopline_safety_timer");
-          current_status_.stopline_safety_timer = ros::Time::now().toSec();
-          return;
-        }
-      }
+      current_status_.stopline_safety_timer = ros::Time::now();
     }
-
-    for (auto& intersect : intersects_)
+    if (!stopline_init_phase2_flag_)
     {
-      if (intersect.id != current_status_.stopline_intersect_id)
-      {
-        continue;
-      }
-
-      int detect_total_count = 0;
-      for (auto& stop : intersect.stops)
-      {
-        int detect_count = 0;
-
-        for (const auto& obj : msg.objects)
-        {
-          int num_of_tries_obj = 0;
-          while (1)
-          {
-            try
-            {
-              tf2::doTransform(obj.pose, obj_global_pose, tf_local2global);
-              break;
-            }
-            catch (tf::TransformException ex)
-            {
-              ROS_ERROR("%s", ex.what());
-              if (++num_of_tries_obj == max_num_of_tries)
-              {
-                ROS_ERROR("Transform retry attempt reached max_num_of_tries! Resetting stopline_safety_timer");
-                current_status_.stopline_safety_timer = ros::Time::now().toSec();
-                return;
-              }
-            }
-          }
-
-          // find distance between each detected obj and stop zone
-          const double obj_dist = amathutils::find_distance(stop.stop_point, obj_global_pose.position);
-          // if distance is closer than predefined distance, not safe to enter intersection
-          if (obj_dist <= stopline_detect_dist_)
-          {
-            ++detect_count;
-          }
-        }
-
-        ROS_DEBUG("current intersection: %d | (%f , %f) | stop_idx: %d, stop.id %d, is_safe %d, detect_count: %d",
-                  current_status_.stopline_intersect_id, stop.stop_point.x, stop.stop_point.y,
-                  current_status_.found_stopsign_idx, stop.stopline_id, stop.is_safe, detect_count);
-
-        if (detect_count == 0)
-        {
-          stop.is_safe = true;
-        }
-        else
-        {
-          stop.is_safe = false;
-          ++detect_total_count;
-        }
-      }
-
-      if (detect_total_count != 0)
-      {
-        current_status_.stopline_safety_timer = ros::Time::now().toSec();
-      }
+      stopline_init_phase2_flag_ = true;
     }
   }
 }

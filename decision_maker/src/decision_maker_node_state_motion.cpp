@@ -217,10 +217,11 @@ void DecisionMakerNode::updateStoplineState(cstring_t& state_name, int status)
   publishStoplineWaypointIdx(current_status_.found_stopsign_idx);
 
   // only run this once when approaching an intersection
-  if (stopline_init_flag_ && current_status_.found_stopsign_idx != -1)
+  if (!stopline_init_phase1_flag_ && current_status_.found_stopsign_idx != -1)
   {
     int stop_line_id = -1;
     current_status_.stopline_intersect_id = -1;
+    current_status_.current_intersection_ptr = nullptr;
     // grab upcoming waypoint's stopline id
     for (const auto& wp : current_status_.finalwaypoints.waypoints)
     {
@@ -230,21 +231,30 @@ void DecisionMakerNode::updateStoplineState(cstring_t& state_name, int status)
         break;
       }
     }
-    // set is_safe flag to true as no need to check safety of its own stop area
+    // find approaching intersect
     for (auto& intersect : intersects_)
     {
-      for (auto& stop : intersect.stops)
+      for (auto& stop_area : intersect.stop_areas)
       {
-        if (stop.stopline_id == stop_line_id)
+        if (stop_area.stopline_id == stop_line_id)
         {
-          stop.is_safe = true;
+          current_status_.current_intersection_ptr = &intersect;
+          // store intersection id that contains the approaching stopline
           current_status_.stopline_intersect_id = intersect.id;
-          break;
+          stop_area.is_safe = -1;  // ignore stop_area associated with approaching stopline
         }
+        else
+        {
+          stop_area.is_safe = 0;  // not safe by default
+        }
+      }
+      if (current_status_.current_intersection_ptr != nullptr)
+      {
+        break;
       }
     }
     current_status_.curr_stopped_idx = current_status_.found_stopsign_idx;
-    stopline_init_flag_ = false;
+    stopline_init_phase1_flag_ = true;
   }
 
   if (fabs(current_status_.velocity) <= stopped_vel_
@@ -255,48 +265,30 @@ void DecisionMakerNode::updateStoplineState(cstring_t& state_name, int status)
       // wp of approaching stopline + wp traveled = wp's gid/lid of stopline
   {
     // start timer once
-    if (!stopline_start_timer_flag_)
+    if (current_status_.stopline_wait_timer.isZero() && current_status_.stopline_safety_timer.isZero())
     {
-      start_timer_ = ros::Time::now();
-      stopline_start_timer_flag_ = true;
-      current_status_.stopline_safety_timer = ros::Time::now().toSec();
-    }
-    ros::Duration tdiff = ros::Time::now() - start_timer_;
-
-    // if timer reaches seconds defined by stopline_wait_duration_
-    if (tdiff.toSec() > stopline_wait_duration_)
-    {
-      stopline_timer_flag_ = true;
+      current_status_.stopline_wait_timer = ros::Time::now();
+      current_status_.stopline_safety_timer = ros::Time::now();
+      ROS_INFO("Starting stopline timers. Wait for %f seconds \n", stopline_wait_duration_);
     }
 
-    for (const auto& intersect : intersects_)
+    ros::Duration tdiff_wait = ros::Time::now() - current_status_.stopline_wait_timer;
+    ros::Duration tdiff_safety = ros::Time::now() - current_status_.stopline_safety_timer;
+    // if timer hasn't reached seconds defined by stopline_wait_duration_
+    if (tdiff_wait.toSec() < stopline_wait_duration_)
     {
-      // count time as long as the intersection is clear
-      if ((ros::Time::now().toSec() - current_status_.stopline_safety_timer) < stopline_min_safety_duration_)
-      {
-        stopline_clear_flag_ = false;
-      }
-      else
-      {
-        stopline_clear_flag_ = true;
-      }
-    }
-
-    // waiting time for stopline_timer_flag_
-    if (!stopline_timer_flag_)
-    {
-      ROS_INFO("Wait for %f seconds... Calculated time diff: %f \n", stopline_wait_duration_, tdiff.toSec());
+      ROS_DEBUG("Wait for %f seconds... Calculated time diff: %f \n", stopline_wait_duration_, tdiff_wait.toSec());
     }
     // waiting for clearance of objects at stop areas
-    if (!stopline_clear_flag_)
+    if (tdiff_safety.toSec() < stopline_min_safety_duration_)
     {
-      ROS_INFO("Objects detected in stop areas. Not safe to enter! [ safety_timer: %f / %f ]",
-        (ros::Time::now().toSec() - current_status_.stopline_safety_timer), stopline_min_safety_duration_);
+      ROS_DEBUG("Objects detected in stop areas. Not safe to enter! [ safety_timer: %f / %f ]",
+        tdiff_safety.toSec(), stopline_min_safety_duration_);
     }
 
     // if timer reaches time in seconds defined by stopline_wait_duration_
     // and passes safety_timer defined by stopline_min_safety_duration_
-    if (stopline_timer_flag_ && stopline_clear_flag_)
+    if (tdiff_wait.toSec() >= stopline_wait_duration_ && tdiff_safety.toSec() >= stopline_min_safety_duration_)
     {
       if (current_status_.ordered_stop_idx != -1)
       {
@@ -307,11 +299,12 @@ void DecisionMakerNode::updateStoplineState(cstring_t& state_name, int status)
         ROS_INFO("Intersection clear! Proceed");
         tryNextState("clear");
       }
+      // reset timers
+      current_status_.stopline_wait_timer = ros::Time(0);
+      current_status_.stopline_safety_timer = ros::Time(0);
       // reset all flags
-      stopline_start_timer_flag_ = false;
-      stopline_timer_flag_ = false;
-      stopline_clear_flag_ = false;
-      stopline_init_flag_ = true;
+      stopline_init_phase1_flag_ = false;
+      stopline_init_phase2_flag_ = false;
     }
   }
 }

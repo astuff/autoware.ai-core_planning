@@ -166,11 +166,16 @@ struct AutowareStatus
   // It holds approaching intersection's id
   int stopline_intersect_id = -1;
 
+  // It keeps track of how long ego vehicle has to wait at the intersection
+  ros::Time stopline_wait_timer;
   // It keeps track of how long intersection is clear for
-  double stopline_safety_timer = 0.0;
+  ros::Time stopline_safety_timer;
 
   // Autonomous or manual control of the vehicle
   bool autonomy_engaged = false;
+
+  // pointer to approaching intersection
+  CrossRoadArea *current_intersection_ptr = nullptr;
 };
 
 class DecisionMakerNode
@@ -215,12 +220,8 @@ private:
   double stopline_min_safety_duration_;
   visualization_msgs::Marker stop_zone_marker_;
 
-  bool stopline_start_timer_flag_ = false;   // true after timer starts
-  bool stopline_timer_flag_ = false;         // true when waiting time is up
-  bool stopline_clear_flag_ = false;         // true when all stop areas are safe/clear
-  bool stopline_init_flag_ = true;           // flag to perform only once
-
-  ros::Time start_timer_;
+  bool stopline_init_phase1_flag_ = false;   // flag to perform only once while approaching
+  bool stopline_init_phase2_flag_ = false;   // flag to perform only once while stopping
 
   // initialization method
   void initROS();
