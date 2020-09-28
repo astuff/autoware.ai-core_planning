@@ -144,12 +144,19 @@ void DecisionMakerNode::publishStoplineWaypointIdx(const int wp_idx)
 
 void DecisionMakerNode::displayStopZone()
 {
-  for (const auto& intersect : intersects_)
+  if (current_status_.current_intersection_ptr == nullptr)
+    return;
+
+  for (const auto& stop_area : current_status_.current_intersection_ptr->stop_areas)
   {
-    for (const auto& stop_area : intersect.stops)
+    // only display unsafe areas
+    if (stop_area.is_safe != 0)
     {
-      if (!stop_area.is_safe)
-        stop_zone_marker_.points.push_back(stop_area.stop_point);
+      continue;
+    }
+    for (const auto& pt : stop_area.roi_points)
+    {
+      stop_zone_marker_.points.push_back(pt);
     }
   }
   Pubs["stop_zone"].publish(stop_zone_marker_);
