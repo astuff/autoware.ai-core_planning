@@ -321,83 +321,38 @@ void CrossRoadArea::addStopArea(const int stopline_id, const geometry_msgs::Poin
 }
 
 std::vector<geometry_msgs::Point> CrossRoadArea::createRectagularStopAreaFromStopLine(
-                                  const geometry_msgs::Point &ptA, const geometry_msgs::Point &ptB,
-                                  const double length)
+    const geometry_msgs::Point& stopline_fp, const geometry_msgs::Point& stopline_bp, const double length)
 {
-  /*********************************************************************
-  Find C(x,y) and D(x,y)
-            * Exterior Point (intersection's centroid point)
-      A *------* B
-        |      |
-      C *------* D
-  AB : stopline
-  ABCD : area of interest
-  known : A(x,y), B(x,y), AC and BD (length), point outside (exterior)
-  length of AC and BD are defined by us
-  *********************************************************************/
-  const geometry_msgs::Point ptExt = bbox.pose.position;  // Exterior Point
-  const double AC = length;
-  geometry_msgs::Point ptC, ptD;
+  // Find ABCD given stopline points
+  //     B *------* A
+  //       |      |
+  //  ---> *      *  <--- stopline points
+  //       |      |
+  //     C *------* D
+  // ABCD : area of interest (stop area)
+  tf2::Vector3 pt_a(stopline_fp.x, stopline_fp.y, 0.0);
+  tf2::Vector3 pt_b(stopline_bp.x, stopline_bp.y, 0.0);
+  tf2::Vector3 v_ab = pt_b - pt_a;
+  // now v_ab becomes a unit vector
+  v_ab.normalize();
+  tf2::Vector3 ortho_vec(-v_ab.y(), v_ab.x(), 0.0);
 
-  // avoid division-by-zero case when finding slope
-  if (ptA.x == ptB.x)
-  {
-    // if the line is vertical, shift the line by adding/subtracting the length
-    geometry_msgs::Point ptC_1, ptC_2;
-    ptC_1.x = ptA.x + AC;
-    ptC_2.x = ptA.x - AC;
-    ptC.x = (fabs(ptC_1.x - ptExt.x) > fabs(ptC_2.x - ptExt.x)) ? ptC_1.x : ptC_2.x;
-    ptD.x = ptC.x;
-    ptC.y = ptA.y;
-    ptD.y = ptB.y;
-  }
-  // avoid division-by-zero case when finding slope
-  else if (ptA.y == ptB.y)
-  {
-    // if the line is horizontal, shift the line by adding/subtracting the length
-    geometry_msgs::Point ptC_1, ptC_2;
-    ptC_1.y = ptA.y + AC;
-    ptC_2.y = ptA.y - AC;
-    ptC.y = (fabs(ptC_1.y - ptExt.y) > fabs(ptC_2.y - ptExt.y)) ? ptC_1.y : ptC_2.y;
-    ptD.y = ptC.y;
-    ptC.x = ptA.x;
-    ptD.x = ptB.x;
-  }
-  else
-  {
-    // slope of the two stop points
-    double m_orig = (ptB.y-ptA.y)/(ptB.x-ptA.x);
-    // perpendicular from the stopline
-    double m = -(1/m_orig);
+  tf2::Vector3 pt_1 = pt_b + length * ortho_vec;
+  tf2::Vector3 pt_2 = pt_a + length * ortho_vec;
+  tf2::Vector3 pt_3 = pt_a - length * ortho_vec;
+  tf2::Vector3 pt_4 = pt_b - length * ortho_vec;
 
-    // complete the equation of a line
-    // y = mx + b or b = y - mx
-    double b_c = ptA.y - m*ptA.x;
+  geometry_msgs::Point pt_A, pt_B, pt_C, pt_D;
+  pt_A.x = pt_1.x();
+  pt_A.y = pt_1.y();
+  pt_B.x = pt_2.x();
+  pt_B.y = pt_2.y();
+  pt_C.x = pt_3.x();
+  pt_C.y = pt_3.y();
+  pt_D.x = pt_4.x();
+  pt_D.y = pt_4.y();
 
-    // find the point C which is on the perpendicular line with distance `length` away from the point A
-    // numerical coefficients for quadratic formula
-    // a = m^2 + 1
-    // b = 2(m)(b_c) - 2(m)(y_a) - 2(x_a)
-    // c = (b_c)^2 - 2(y_a)(b_c) + (y_a)^2 - AC^2
-    double a = m*m + 1;
-    double b = 2*m*b_c - 2*m*ptA.y - 2*ptA.x;
-    double c = b_c*b_c - 2*ptA.y*b_c + ptA.y*ptA.y + ptA.x*ptA.x - AC*AC;
-
-    geometry_msgs::Point ptC_1, ptC_2;
-    // quadratic formula
-    ptC_1.x = (-b + sqrt(b*b - 4*a*c)) / (2*a);
-    ptC_2.x = (-b - sqrt(b*b - 4*a*c)) / (2*a);
-    // find y
-    ptC_1.y = m*ptC_1.x + b_c;
-    ptC_2.y = m*ptC_2.x + b_c;
-    // choose the pair that are farther away from the exterior point
-    ptC = (amathutils::find_distance(ptExt, ptC_1) > amathutils::find_distance(ptExt, ptC_2)) ? ptC_1 : ptC_2;
-    // apply offset between point A and B to calculate point D
-    ptD.x = ptC.x + (ptB.x - ptA.x);
-    ptD.y = ptC.y + (ptB.y - ptA.y);
-  }
-  // return all points
-    return std::vector<geometry_msgs::Point>{ptA, ptB, ptD, ptC};
+  return std::vector<geometry_msgs::Point>{ pt_A, pt_B, pt_C, pt_D };
 }
 
 }  // namespace decision_maker

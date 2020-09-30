@@ -74,13 +74,14 @@ public:
 
   /**
    * @brief finds the two missing points of a rectangle drawn from two points and its length
-   * @param point A
-   * @param point B
+   * @param point stopline_fp
+   * @param point stopline_bp
    * @return vector of points that make up the rectangle
    */
-  std::vector<geometry_msgs::Point> createRectagularStopAreaFromStopLine(const geometry_msgs::Point &ptA,
-                                                                         const geometry_msgs::Point &ptB,
+  std::vector<geometry_msgs::Point> createRectagularStopAreaFromStopLine(const geometry_msgs::Point& stopline_fp,
+                                                                         const geometry_msgs::Point& stopline_bp,
                                                                          const double length);
+
   int id = -1;
   int area_id = -1;
   std::vector<geometry_msgs::Point> points;

@@ -58,7 +58,7 @@ DecisionMakerNode::DecisionMakerNode()
   use_lanelet_map_(false),
   stopline_detect_dist_(10.0),
   stopline_wait_duration_(3.0),
-  stopline_min_safety_duration_(1.0)
+  stopline_min_safety_duration_(4.0)
 {
   std::string file_name_mission;
   std::string file_name_vehicle;
